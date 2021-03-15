@@ -11,7 +11,7 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     {:ok, agent} = Agent.start_link(Queue, :generate_empty_queue, [], name: __MODULE__)
   end
   def start_link(initial_queue) do
-    {:ok, agent} = Agent.start_link(fn -> initial_queue end, name: __MODULE__)
+    {:ok, agent} = Agent.start_link(fn initial_queue -> initial_queue end, name: __MODULE__)
   end
 
   def generate_empty_queue do
@@ -27,6 +27,7 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
 
   def add_order(order) do
     Agent.update(__MODULE__, __MODULE__, :update_order_in_queue, [order])
+    # Turn on light here?
   end
 
   def remove_all_orders_to_floor(floor) do

@@ -3,8 +3,20 @@ defmodule HWPolling do
 
   @moduledoc """
   Server for receiving button-presses and floor updates and forewarding these to the correct module. Also acts as the supervisor for all 3*n buttons.
+  The state of the server is the last update it has recevied.
   """
 
+  # Client-side
+
+  def start_link() do   # Options?
+    GenServer.start_link(__MODULE__)
+  end
+
+  def notify_update(pid_recipient, update) do
+    Genserver.cast(pid_recipient, update)
+  end
+
+  # Server-side
 
   defp link_floor_sensor(pid_recipient) do
     {:ok, _pid_button} = HWSensor.start_link(pid_recipient, :floor_sensor, :not_a_floor)
@@ -16,6 +28,47 @@ defmodule HWPolling do
   defp link_all_buttons(pid_recipient, button_type, this_floor) do
     {:ok, _pid_button} = HWSensor.start_link(pid_recipient, button_type, this_floor)
     link_all_buttons(pid_recipient, this_floor)
+  end
+
+  @impl true
+  def init do
+    link_floor_sensor(__MODULE__)
+    link_all_buttons(__MODULE__, :hall_up, Constants.number_of_floors)
+    link_all_buttons(__MODULE__, :hall_down, Constants.number_of_floors)
+    link_all_buttons(__MODULE__, :cab, Constants.number_of_floors)
+    {:ok, :receiving}
+  end
+
+  # Callbacks
+
+  @impl true
+  def handle_cast({:stop_button, new_state}, _state) do
+    {:noreply, :stop_updated}
+  end
+
+  @impl true
+  def handle_cast({:floor_sensor, new_state}, _state) do
+    Position.update_floor(new_state)
+    {:noreply, :floor_updated}
+  end
+
+  @impl true
+  def handle_cast({:cab, floor, :on}, _state) do
+    Queue.add_order({floor, :cab, :order})
+    # Turn on light here?
+    {:noreply, :order_received}
+  end
+
+  @impl true
+  def handle_cast({at_button_type, floor, :on}, _state) do
+    # Send to server here
+    {:noreply, :order_received}
+  end
+
+  @impl true
+  def handle_cast({_at_button_, _floor, :off}, _state) do
+    {:noreply, :order_button_low}
+  end
 end
 
 
@@ -30,20 +83,31 @@ defmodule HWSensor do
   end
 
   def state_change_reporter(pid_recipient, :stop_button, _floor, last_state) do
-      new_state = Driver.get_stop_button_state
-      if new_state !== last_state, do: send(pid_recipient, {:stop_button, {:stop_button, new_state}})
-      state_change_reporter(pid_recipient, :stop_button, :not_a_floor, new_state)
+    new_state = Driver.get_stop_button_state
+    if new_state !== last_state, do: HWPolling.notify_update(pid_recipient, {:stop_button, new_state})
+
+    # Recursion
+    Process.sleep(100)
+    state_change_reporter(pid_recipient, :stop_button, :not_a_floor, new_state)
   end
 
   def state_change_reporter(pid_recipient, :floor_sensor, _floor, last_state) do
     new_state = Driver.get_floor_sensor_state
-    if new_state !== last_state, do: send(pid_recipient, {:floor_sensor, new_state})
+    if new_state !== last_state, do: HWPolling.notify_update(pid_recipient, {:floor_sensor, new_state})
+
+    # Recursion
+    Process.sleep(100)
     state_change_reporter(pid_recipient, :floor_sensor, :not_a_floor, new_state)
   end
 
+
+  # Use this for order buttons (at_button_type is either :hall_up, :hall_down or :cab)
   def state_change_reporter(pid_recipient, at_button_type, floor, last_state) do
-      new_state = Driver.get_order_button_state(floor, at_button_type)
-      if new_state !== last_state, do: send(pid_recipient, {:hw_button, {at_button_type, floor, new_state}})
-      state_change_reporter(pid_recipient, at_button_type, floor, new_state)
+    new_state = Driver.get_order_button_state(floor, at_button_type)
+    if new_state !== last_state, do: HWPolling.notify_update(pid_recipient, {at_button_type, floor, new_state})
+
+    # Recursion
+    Process.sleep(100)
+    state_change_reporter(pid_recipient, at_button_type, floor, new_state)
   end
 end
