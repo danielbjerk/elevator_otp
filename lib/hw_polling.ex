@@ -1,10 +1,10 @@
 defmodule HWPolling do
-  use GenServer
-
   @moduledoc """
   Server for receiving button-presses and floor updates and forewarding these to the correct module. Also acts as the supervisor for all 3*n buttons.
   The state of the server is the last update it has recevied.
   """
+
+  use GenServer
 
   # Client-side
 
@@ -48,7 +48,7 @@ defmodule HWPolling do
 
   @impl true
   def handle_cast({:floor_sensor, new_state}, _state) do
-    Position.update_floor(new_state)
+    Position.update(new_state)
     {:noreply, :floor_updated}
   end
 
@@ -87,7 +87,7 @@ defmodule HWSensor do
     if new_state !== last_state, do: HWPolling.notify_update(pid_recipient, {:stop_button, new_state})
 
     # Recursion
-    Process.sleep(100)
+    Process.sleep(Constants.hw_sensor_sleep_time)
     state_change_reporter(pid_recipient, :stop_button, :not_a_floor, new_state)
   end
 
@@ -96,7 +96,7 @@ defmodule HWSensor do
     if new_state !== last_state, do: HWPolling.notify_update(pid_recipient, {:floor_sensor, new_state})
 
     # Recursion
-    Process.sleep(100)
+    Process.sleep(Constants.hw_sensor_sleep_time)
     state_change_reporter(pid_recipient, :floor_sensor, :not_a_floor, new_state)
   end
 
@@ -107,7 +107,7 @@ defmodule HWSensor do
     if new_state !== last_state, do: HWPolling.notify_update(pid_recipient, {at_button_type, floor, new_state})
 
     # Recursion
-    Process.sleep(100)
+    Process.sleep(Constants.hw_sensor_sleep_time)
     state_change_reporter(pid_recipient, at_button_type, floor, new_state)
   end
 end

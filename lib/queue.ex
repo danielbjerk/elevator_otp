@@ -11,7 +11,7 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     {:ok, agent} = Agent.start_link(Queue, :generate_empty_queue, [], name: __MODULE__)
   end
   def start_link(initial_queue) do
-    {:ok, agent} = Agent.start_link(fn initial_queue -> initial_queue end, name: __MODULE__)
+    {:ok, agent} = Agent.start_link(fn -> initial_queue end, name: __MODULE__)
   end
 
   def generate_empty_queue do

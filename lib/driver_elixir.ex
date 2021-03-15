@@ -104,7 +104,7 @@ defmodule Driver do
 
 
   def handle_call :get_floor_sensor_state, _from, socket do
-    :gen_tcp.send socket, [7, 0, 0, 0] 
+    :gen_tcp.send socket, [7, 0, 0, 0]
     button_state = case :gen_tcp.recv(socket, 4, @call_timeout) do
       {:ok, [7, 0, _, 0]} -> :between_floors
       {:ok, [7, 1, floor, 0]} -> floor
@@ -113,7 +113,7 @@ defmodule Driver do
   end
 
   def handle_call :get_stop_button_state, _from, socket do
-    :gen_tcp.send socket, [8, 0, 0, 0] 
+    :gen_tcp.send socket, [8, 0, 0, 0]
     button_state = case :gen_tcp.recv(socket, 4, @call_timeout) do
       {:ok, [8, 0, 0, 0]} -> :inactive
       {:ok, [8, 1, 0, 0]} -> :active
@@ -122,7 +122,7 @@ defmodule Driver do
   end
 
   def handle_call :get_obstruction_switch_state, _from, socket do
-    :gen_tcp.send socket, [9, 0, 0, 0] 
+    :gen_tcp.send socket, [9, 0, 0, 0]
     button_state = case :gen_tcp.recv(socket, 4, @call_timeout) do
       {:ok, [9, 0, 0, 0]} -> :inactive
       {:ok, [9, 1, 0, 0]} -> :active
