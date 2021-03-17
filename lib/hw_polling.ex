@@ -1,3 +1,19 @@
+defmodule HWPolling.Superviser do
+  @moduledoc """
+
+  """
+
+  use Supervisor
+
+  def start_link() do # Hit??
+    link_floor_sensor(__MODULE__)
+    link_all_buttons(__MODULE__, :hall_up, Constants.number_of_floors)
+    link_all_buttons(__MODULE__, :hall_down, Constants.number_of_floors)
+    link_all_buttons(__MODULE__, :cab, Constants.number_of_floors)
+    HWPolling.start_link()
+  end
+end
+
 defmodule HWPolling do
   @moduledoc """
   Server for receiving button-presses and floor updates and forewarding these to the correct module. Also acts as the supervisor for all 3*n buttons.
@@ -22,20 +38,22 @@ defmodule HWPolling do
     {:ok, _pid_button} = HWSensor.start_link(pid_recipient, :floor_sensor, :not_a_floor)
   end
 
-  defp link_all_buttons(_pid_recipient, _button_type -1) do
+  defp link_all_buttons(_pid_recipient, _button_type, -1) do
     :ok
   end
   defp link_all_buttons(pid_recipient, button_type, this_floor) do
     {:ok, _pid_button} = HWSensor.start_link(pid_recipient, button_type, this_floor)
-    link_all_buttons(pid_recipient, this_floor)
+    link_all_buttons(pid_recipient, button_type, this_floor - 1)
   end
 
   @impl true
   def init do
+    """
     link_floor_sensor(__MODULE__)
     link_all_buttons(__MODULE__, :hall_up, Constants.number_of_floors)
     link_all_buttons(__MODULE__, :hall_down, Constants.number_of_floors)
     link_all_buttons(__MODULE__, :cab, Constants.number_of_floors)
+    """
     {:ok, :receiving}
   end
 

@@ -14,6 +14,7 @@ defmodule ElevatorDriver do
     Actuator.change_direction(:down)
     {:ok, pid} = Task.async(__MODULE__, loop_until_at_a_floor, [])
     Task.await(pid)
+
   end
 
 

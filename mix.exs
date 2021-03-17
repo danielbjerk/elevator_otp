@@ -1,4 +1,4 @@
-defmodule ElevatorOtp.MixProject do
+defmodule ElevatorOTP.MixProject do
   use Mix.Project
 
   def project do
@@ -15,7 +15,7 @@ defmodule ElevatorOtp.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {ElevatorOtp.Application, []}
+      mod: {ElevatorOTP.Application, []}
     ]
   end
 

@@ -7,12 +7,14 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
 
   # Starting the queue
 
-  def start_link(:empty_queue) do
+  def start_link do
     {:ok, agent} = Agent.start_link(Queue, :generate_empty_queue, [], name: __MODULE__)
   end
+  """ Fails for some (no) discernible reason
   def start_link(initial_queue) do
     {:ok, agent} = Agent.start_link(fn -> initial_queue end, name: __MODULE__)
   end
+  """
 
   def generate_empty_queue do
     Enum.map(0..Constants.number_of_floors, fn floor -> [{floor, :hall_up, :no_order}, {floor, :hall_down, :no_order}, {floor, :cab, :no_order}] end)

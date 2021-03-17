@@ -1,4 +1,4 @@
-defmodule ElevatorOtp.Application do
+defmodule ElevatorOTP.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
@@ -9,16 +9,17 @@ defmodule ElevatorOtp.Application do
     children = [
       Queue,
       Position,
-      HWSetting,
+      Actuator,
       HWPolling,
-      ElevatorDriver
+      ElevatorDriver,
+      Driver
       # Starts a worker by calling: ElevatorOtp.Worker.start_link(arg)
       # {ElevatorOtp.Worker, arg}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: ElevatorOtp.Supervisor]
+    opts = [strategy: :one_for_one, name: ElevatorOTP.Supervisor]
     Supervisor.start_link(children, opts)
   end
 end

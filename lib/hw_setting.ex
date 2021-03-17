@@ -3,7 +3,7 @@ defmodule Actuator do
   Server for controlling door and motor.
   """
 
-  use Genserver
+  use GenServer
 
   # Client-side
 
