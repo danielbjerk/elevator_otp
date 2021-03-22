@@ -1,8 +1,6 @@
+
+"""
 defmodule HWPolling.Superviser do
-  @moduledoc """
-
-  """
-
   use Supervisor
 
   def start_link() do # Hit??
@@ -13,6 +11,7 @@ defmodule HWPolling.Superviser do
     HWPolling.start_link()
   end
 end
+"""
 
 defmodule HWPolling do
   @moduledoc """
@@ -48,12 +47,10 @@ defmodule HWPolling do
 
   @impl true
   def init do
-    """
     link_floor_sensor(__MODULE__)
     link_all_buttons(__MODULE__, :hall_up, Constants.number_of_floors)
     link_all_buttons(__MODULE__, :hall_down, Constants.number_of_floors)
     link_all_buttons(__MODULE__, :cab, Constants.number_of_floors)
-    """
     {:ok, :receiving}
   end
 

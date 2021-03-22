@@ -7,12 +7,12 @@ defmodule ElevatorOTP.Application do
 
   def start(_type, _args) do
     children = [
+      Driver,
       Queue,
       Position,
       Actuator,
       HWPolling,
-      ElevatorDriver,
-      Driver
+      ElevatorDriver
       # Starts a worker by calling: ElevatorOtp.Worker.start_link(arg)
       # {ElevatorOtp.Worker, arg}
     ]

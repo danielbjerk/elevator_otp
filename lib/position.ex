@@ -1,6 +1,7 @@
 defmodule Position do
   @moduledoc """
   Agent which stores the elevators position.
+  Position is tuple on the form {floor, direction}.
   """
   use Agent
 
@@ -31,13 +32,12 @@ defmodule Position do
         {floor, old_direction}
 
       :between_floors ->
-        case {old_floor, old_direction} do    # Isn't it enough to case against old direction?
-          {old_floor, :up} ->
+        case old_direction do    # Isn't it enough to case against old direction?
+          :up ->
             {old_floor + 0.5, old_direction}
-
-          {old_floor, :down} ->
+          :down ->
             {old_floor - 0.5, old_direction}
-          {old_floor, :stop} ->
+          :stop ->
             {old_floor, old_direction}
         end
     end

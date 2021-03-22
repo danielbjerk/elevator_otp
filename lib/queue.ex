@@ -1,7 +1,9 @@
 defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
   @moduledoc """
   Agent which stores and deals with accessing the queue.
+  Orders are tuples on the form {int floor, atom order_type, atom order/no_order}
   """
+
   use Agent
 
 
@@ -10,7 +12,8 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
   def start_link do
     {:ok, agent} = Agent.start_link(Queue, :generate_empty_queue, [], name: __MODULE__)
   end
-  """ Fails for some (no) discernible reason
+  """
+  # Fails for some (no) discernible reason
   def start_link(initial_queue) do
     {:ok, agent} = Agent.start_link(fn -> initial_queue end, name: __MODULE__)
   end
@@ -29,6 +32,7 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
 
   def add_order(order) do
     Agent.update(__MODULE__, __MODULE__, :update_order_in_queue, [order])
+    DriverFSM.notify_queue_updated(order)
     # Turn on light here?
   end
 
@@ -51,13 +55,15 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
   end
   """
 
+
+
   def order_at_floor?(floor) do
     orders_at_floor = Agent.get(__MODULE__, fn queue -> Enum.at(queue, floor) end)
     ({floor, :hall_up, :order} in orders_at_floor) or ({floor, :hall_down, :order} in orders_at_floor) or ({floor, :cab, :order} in orders_at_floor)
   end
 
-  def get_all_active_orders_at_floor(a_queue, floor) do
-    orders_at_floor = Agent.get(a_queue, fn queue -> Enum.at(queue, floor) end)
+  def get_all_active_orders_at_floor(floor) do
+    orders_at_floor = Agent.get(__MODULE__, fn queue -> Enum.at(queue, floor) end)
     Enum.filter(orders_at_floor, fn order ->
       case order do
         {floor, _order_type, :order} -> true
@@ -65,6 +71,28 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
       end
     end)
   end
+  
+  def order_compatible_with_direction_at_floor?(floor, order_type) do
+    active_orders_at_floor = get_all_active_orders_at_floor(floor)
+    ({floor, order_type, :order} in active_orders_at_floor) or ({floor, :cab, :order} in active_orders_at_floor)
+  end
+
+  # call with (floor, []) to start
+  def get_all_active_orders_below(1, orders_so_far) do
+    [get_all_active_orders_at_floor(0) | orders_so_far]
+  end
+  def get_all_active_orders_below(floor, orders_so_far) do
+    get_all_active_orders_below(floor - 1, [get_all_active_orders_at_floor(floor - 1) | orders_so_far])
+  end
+
+  def get_all_active_orders_above(@number_of_floors - 1, orders_so_far) do
+    [get_all_active_orders_at_floor(@number_of_floors) | orders_so_far]
+  end
+  def get_all_active_orders_above(floor, orders_so_far) do
+    get_all_active_orders_above(floor + 1, [get_all_active_orders_at_floor(floor + 1) | orders_so_far])
+  end
+
+
 
   def order_type_to_queue_index(order_type) do
     case order_type do
