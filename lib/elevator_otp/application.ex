@@ -12,7 +12,7 @@ defmodule ElevatorOTP.Application do
       Position,
       Actuator,
       HWPolling,
-      ElevatorDriver
+      DriverFSM
       # Starts a worker by calling: ElevatorOtp.Worker.start_link(arg)
       # {ElevatorOtp.Worker, arg}
     ]

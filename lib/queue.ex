@@ -85,11 +85,11 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     get_all_active_orders_below(floor - 1, [get_all_active_orders_at_floor(floor - 1) | orders_so_far])
   end
 
-  def get_all_active_orders_above(@number_of_floors - 1, orders_so_far) do
-    [get_all_active_orders_at_floor(@number_of_floors) | orders_so_far]
-  end
   def get_all_active_orders_above(floor, orders_so_far) do
-    get_all_active_orders_above(floor + 1, [get_all_active_orders_at_floor(floor + 1) | orders_so_far])
+    cond do
+      floor == Constants.number_of_floors - 1 -> [get_all_active_orders_at_floor(Constants.number_of_floors) | orders_so_far]
+      true -> get_all_active_orders_above(floor + 1, [get_all_active_orders_at_floor(floor + 1) | orders_so_far])
+    end
   end
 
 

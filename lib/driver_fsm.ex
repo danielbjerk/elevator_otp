@@ -123,7 +123,7 @@ defmodule DriverFSM do
         {:ok, :driving_up}
 
       true -> # Queue empty
-        {:ok, queue_empty}
+        {:ok, :queue_empty}
     end
   end
 
