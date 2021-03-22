@@ -7,24 +7,35 @@ defmodule Actuator do
 
   # Client-side
 
-  def start_link() do
-  GenServer.start_link(__MODULE__)
+  def start_link(_opts) do
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
-
-  # Task.start_async(Door, :door_open_wait_until_closing)
 
   # Server-side
 
   @impl true
-  def init do
-    :door_closed
+  def init(_init_args) do
+    {:ok, :door_closed}
   end
 
   # Callbacks
 
+  def change_direction(new_direction) do
+    GenServer.cast(__MODULE__, {:change_direction, new_direction})
+    Position.update(new_direction)
+  end
   @impl true
-  def handle_cast({:change_direction, direction}, driver_state) do
+  def handle_cast({:change_direction, direction}, _driver_state) do
+    Motor.change_direction(direction)
+    {:noreply, :driving}
+  end
 
+  def open_door do
+    GenServer.cast(__MODULE__, {:open_door})
+  end
+  @impl true
+  def handle_cast({:open_door}, _driver_state) do
+    Door.door_open_wait_until_closing
   end
 end
 
@@ -75,9 +86,10 @@ defmodule Motor do
 end
 
 
-
+"""
 defmodule Lights do
   def set_light_state(:door_open, state) do
     {:ok, pid} = Task.start()
   end
 end
+"""

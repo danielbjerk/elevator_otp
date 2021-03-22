@@ -9,7 +9,7 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
 
   # Starting the queue
 
-  def start_link do
+  def start_link(_opts) do
     {:ok, agent} = Agent.start_link(Queue, :generate_empty_queue, [], name: __MODULE__)
   end
   """

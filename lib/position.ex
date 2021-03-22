@@ -5,8 +5,8 @@ defmodule Position do
   """
   use Agent
 
-  def start_link do
-    {:ok, agent} = Agent.start_link(fn {:unknown_floor, :unknown_direction} -> {:unknown_floor, :unknown_direction} end, name: __MODULE__)
+  def start_link(_opts) do
+    {:ok, _agent} = Agent.start_link(fn -> {:unknown_floor, :unknown_direction} end, name: __MODULE__)
   end
 
   def get() do
@@ -18,8 +18,9 @@ defmodule Position do
     floor !== :between_floors
   end
 
-  def update(update) do
-    Agent.update(__MODULE__, __MODULE__, :calculate_update, [update])
+  def update(new_position) do
+    Agent.update(__MODULE__, __MODULE__, :calculate_update, [new_position])
+    DriverFSM.notify_position_updated(new_position)
   end
 
   def calculate_update(old_position, update) do
@@ -32,7 +33,7 @@ defmodule Position do
         {floor, old_direction}
 
       :between_floors ->
-        case old_direction do    # Isn't it enough to case against old direction?
+        case old_direction do
           :up ->
             {old_floor + 0.5, old_direction}
           :down ->

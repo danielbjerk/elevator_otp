@@ -20,16 +20,19 @@ defmodule HWPolling do
   """
 
   use GenServer
+  #use Supervisor
 
   # Client-side
 
-  def start_link() do   # Options?
-    GenServer.start_link(__MODULE__)
+  def start_link(_opts) do
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def notify_update(pid_recipient, update) do
-    Genserver.cast(pid_recipient, update)
+    GenServer.cast(pid_recipient, update)
   end
+
+
 
   # Server-side
 
@@ -46,7 +49,7 @@ defmodule HWPolling do
   end
 
   @impl true
-  def init do
+  def init(_init_arg) do
     link_floor_sensor(__MODULE__)
     link_all_buttons(__MODULE__, :hall_up, Constants.number_of_floors)
     link_all_buttons(__MODULE__, :hall_down, Constants.number_of_floors)
@@ -54,6 +57,8 @@ defmodule HWPolling do
     {:ok, :receiving}
   end
 
+
+  
   # Callbacks
 
   @impl true

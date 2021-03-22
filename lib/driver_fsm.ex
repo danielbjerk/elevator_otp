@@ -7,25 +7,25 @@ defmodule DriverFSM do
 
   # Initialization of FSM
 
-  def start_link do # Options?
-    GenServer.start_link(__MODULE__)
+  def start_link(_opts) do # Options?
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   @impl true
   def init(_init_arg) do
     Actuator.change_direction(:down)
-    {:ok, pid} = Task.async(__MODULE__, loop_until_at_a_floor, [])
+    pid = Task.async(__MODULE__, :loop_until_at_a_floor, [])
     Task.await(pid)
     Actuator.change_direction(:stop)
 
     # Exit init state
     {floor, _dir} = Position.get
     cond do
-      Queue.get_all_active_orders_above(floor) != [] ->
+      Queue.get_all_active_orders_above(floor, []) != [] ->
         Actuator.change_direction(:up)
         {:ok, :driving_up}
 
-      Queue.get_all_active_orders_below(floor) != [] ->
+      Queue.get_all_active_orders_below(floor, []) != [] ->
         Actuator.change_direction(:down)
         {:ok, :driving_down}
 
@@ -47,8 +47,8 @@ defmodule DriverFSM do
   end
   @impl true
   def handle_cast({:new_order, order}, :queue_empty) do
-    {floor, direction} = Position.get
-    {order_floor, order_type, order_here} = order
+    {floor, _direction} = Position.get
+    {order_floor, _order_type, _order_here} = order
 
     diff = calculate_difference_in_floor(order_floor, floor)
     cond do
@@ -71,14 +71,15 @@ defmodule DriverFSM do
     end
   end
 
+  def notify_position_updated(new_position) do
+    GenServer.cast(__MODULE__, {:updated_position, new_position})
+  end
 
   # Events when state == :driving_up
 
-  def notify_floor_updated(new_floor) do
-    GenServer.cast(__MODULE__, {:new_floor, new_floor})
-  end
   @impl true
-  def handle_cast({:new_floor, new_floor}, :driving_up) do
+  def handle_cast({:updated_position, new_position}, :driving_up) do
+    {new_floor, _new_direction} = new_position
     if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_up) do
       Actuator.change_direction(:stop)
       Actuator.open_door
@@ -102,11 +103,9 @@ defmodule DriverFSM do
 
   # Events when state == :driving_down
 
-  def notify_floor_updated(new_floor) do
-    GenServer.cast(__MODULE__, {:new_floor, new_floor})
-  end
   @impl true
-  def handle_cast({:new_floor, new_floor}, :driving_down) do
+  def handle_cast({:updated_position, new_position}, :driving_down) do
+    {new_floor, _new_direction} = new_position
     if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_down) do
       Actuator.change_direction(:stop)
       Actuator.open_door
@@ -129,17 +128,17 @@ defmodule DriverFSM do
 
   
 
-  defp calculate_difference_in_floor(order_floor, :unknown_floor) do
+  defp calculate_difference_in_floor(_order_floor, :unknown_floor) do
     :unknown_diff
   end
   defp calculate_difference_in_floor(order_floor, floor) do
     order_floor - floor
   end
 
-  defp loop_until_at_a_floor() do
+  def loop_until_at_a_floor() do
     Process.sleep(Constants.driver_wait_loop_sleep_time)
     case Position.at_a_floor? do
-      false -> loop_until_at_a_floor
+      false -> loop_until_at_a_floor()
       true -> :ok
     end
   end
