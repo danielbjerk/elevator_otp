@@ -10,7 +10,7 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
   # Starting the queue
 
   def start_link(_opts) do
-    {:ok, agent} = Agent.start_link(Queue, :generate_empty_queue, [], name: __MODULE__)
+    {:ok, _agent} = Agent.start_link(Queue, :generate_empty_queue, [], name: __MODULE__)
   end
   """
   # Fails for some (no) discernible reason
@@ -43,7 +43,7 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
   end
 
   def update_order_in_queue(queue, order) do
-    {floor, order_type, order_here?} = order
+    {floor, order_type, _order_here?} = order
     orders_at_floor = Enum.at(queue, floor)
     orders_at_floor_updated = List.replace_at(orders_at_floor, order_type_to_queue_index(order_type), order)
     List.replace_at(queue, floor, orders_at_floor_updated)
@@ -66,15 +66,15 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     orders_at_floor = Agent.get(__MODULE__, fn queue -> Enum.at(queue, floor) end)
     Enum.filter(orders_at_floor, fn order ->
       case order do
-        {floor, _order_type, :order} -> true
+        {_floor, _order_type, :order} -> true
         _ -> false
       end
     end)
   end
   
-  def order_compatible_with_direction_at_floor?(floor, order_type) do
+  def order_compatible_with_direction_at_floor?(floor, compatible_order_type) do
     active_orders_at_floor = get_all_active_orders_at_floor(floor)
-    ({floor, order_type, :order} in active_orders_at_floor) or ({floor, :cab, :order} in active_orders_at_floor)
+    ({floor, compatible_order_type, :order} in active_orders_at_floor) or ({floor, :cab, :order} in active_orders_at_floor)
   end
 
   # call with (floor, []) to start

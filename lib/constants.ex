@@ -5,5 +5,5 @@ defmodule Constants do
 
   def hw_sensor_sleep_time, do: 100
 
-  def driver_wait_loop_sleep_time, do: 50
+  def driver_wait_loop_sleep_time, do: 100
 end

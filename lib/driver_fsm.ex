@@ -14,8 +14,8 @@ defmodule DriverFSM do
   @impl true
   def init(_init_arg) do
     Actuator.change_direction(:down)
-    pid = Task.async(__MODULE__, :loop_until_at_a_floor, [])
-    Task.await(pid)
+    task = Task.async(__MODULE__, :loop_until_at_a_floor, [])
+    Task.await(task)
     Actuator.change_direction(:stop)
 
     # Exit init state
@@ -54,20 +54,20 @@ defmodule DriverFSM do
     cond do
       diff > 0 ->
         Actuator.change_direction(:up)
-        {:ok, :driving_up}
+        {:noreply, :driving_up}
 
       diff < 0 ->
         Actuator.change_direction(:down)
-        {:ok, :driving_down}
+        {:noreply, :driving_down}
 
       diff == 0 ->
         Actuator.open_door
         Queue.remove_all_orders_to_floor(floor)
-        {:ok, :queue_empty}
+        {:noreply, :queue_empty}
 
       :unknown_diff ->
         Actuator.change_direction(:down)
-        {:ok, :driving_down}
+        {:noreply, :driving_down}
     end
   end
 
@@ -87,16 +87,16 @@ defmodule DriverFSM do
     end
 
     cond do
-      Queue.worst_order_in_direction(:up) != [] ->
+      Queue.get_all_active_orders_above(new_floor, []) != [] ->
         Actuator.change_direction(:up)
-        {:ok, :driving_up}
+        {:noreply, :driving_up}
       
-      Queue.worst_order_in_direction(:down) != [] ->
+      Queue.get_all_active_orders_below(new_floor, []) != [] ->
         Actuator.change_direction(:down)
-        {:ok, :driving_down}
+        {:noreply, :driving_down}
 
       true -> # Queue empty
-        {:ok, :queue_empty}
+        {:noreply, :queue_empty}
     end
   end
 
@@ -113,16 +113,16 @@ defmodule DriverFSM do
     end
 
     cond do
-      Queue.worst_order_in_direction(:down) != [] ->
+      Queue.get_all_active_orders_below(new_floor, []) != [] ->
         Actuator.change_direction(:down)
-        {:ok, :driving_down}
+        {:noreply, :driving_down}
       
-      Queue.worst_order_in_direction(:up) != [] ->
+        Queue.get_all_active_orders_above(new_floor, []) != [] ->
         Actuator.change_direction(:up)
-        {:ok, :driving_up}
+        {:noreply, :driving_up}
 
       true -> # Queue empty
-        {:ok, :queue_empty}
+        {:noreply, :queue_empty}
     end
   end
 

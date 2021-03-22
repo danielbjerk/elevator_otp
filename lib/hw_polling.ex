@@ -1,18 +1,3 @@
-
-"""
-defmodule HWPolling.Superviser do
-  use Supervisor
-
-  def start_link() do # Hit??
-    link_floor_sensor(__MODULE__)
-    link_all_buttons(__MODULE__, :hall_up, Constants.number_of_floors)
-    link_all_buttons(__MODULE__, :hall_down, Constants.number_of_floors)
-    link_all_buttons(__MODULE__, :cab, Constants.number_of_floors)
-    HWPolling.start_link()
-  end
-end
-"""
-
 defmodule HWPolling do
   @moduledoc """
   Server for receiving button-presses and floor updates and forewarding these to the correct module. Also acts as the supervisor for all 3*n buttons.
@@ -20,7 +5,7 @@ defmodule HWPolling do
   """
 
   use GenServer
-  #use Supervisor
+
 
   # Client-side
 
@@ -28,35 +13,17 @@ defmodule HWPolling do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
-  def notify_update(pid_recipient, update) do
-    GenServer.cast(pid_recipient, update)
-  end
-
-
 
   # Server-side
 
-  defp link_floor_sensor(pid_recipient) do
-    {:ok, _pid_button} = HWSensor.start_link(pid_recipient, :floor_sensor, :not_a_floor)
-  end
-
-  defp link_all_buttons(_pid_recipient, _button_type, -1) do
-    :ok
-  end
-  defp link_all_buttons(pid_recipient, button_type, this_floor) do
-    {:ok, _pid_button} = HWSensor.start_link(pid_recipient, button_type, this_floor)
-    link_all_buttons(pid_recipient, button_type, this_floor - 1)
-  end
-
   @impl true
   def init(_init_arg) do
-    link_floor_sensor(__MODULE__)
-    link_all_buttons(__MODULE__, :hall_up, Constants.number_of_floors)
-    link_all_buttons(__MODULE__, :hall_down, Constants.number_of_floors)
-    link_all_buttons(__MODULE__, :cab, Constants.number_of_floors)
     {:ok, :receiving}
   end
 
+  def notify_update({at_button_type, update}) do
+    GenServer.cast(__MODULE__, {at_button_type, update})
+  end
 
 
   # Callbacks
@@ -94,41 +61,86 @@ end
 
 
 
+defmodule HWSensor.Supervisor do
+  
+  use Supervisor
+
+  def start_link(_args) do
+    Supervisor.start_link(__MODULE__, [], name: __MODULE__)
+  end
+
+  @impl true
+  def init(_init_arg) do
+    children = [
+      {HWSensor, [:floor_sensor, :not_a_floor]},
+      {HWSensor, [:hall_up, Constants.number_of_floors]},
+      {HWSensor, [:hall_down, Constants.number_of_floors]},
+      {HWSensor, [:cab, Constants.number_of_floors]}
+    ]
+    
+    Supervisor.init(children, strategy: :one_for_one)
+  end
+end
+
+
+
 defmodule HWSensor do
   @moduledoc """
   Module for implementing "interrupts" from the elevator into elixir in the form of standardized messages
   """
 
-  def start_link(pid_recipient, at_sensor_type, floor) do
-    Task.start_link(__MODULE__, :state_change_reporter, [pid_recipient, at_sensor_type, floor, :init])
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, opts},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 500
+    }
   end
 
-  def state_change_reporter(pid_recipient, :stop_button, _floor, last_state) do
+
+  def start_link(at_sensor_type, :not_a_floor) do
+    Task.start_link(__MODULE__, :state_change_reporter, [at_sensor_type, :not_a_floor, :init])
+  end
+
+  def start_link(_at_button_type, -1) do
+    :ok
+  end
+  def start_link(at_button_type, this_floor) do
+    Task.start_link(__MODULE__, :state_change_reporter, [at_button_type, this_floor, :init])
+    start_link(at_button_type, this_floor - 1)
+  end
+
+
+
+  def state_change_reporter(:stop_button, _floor, last_state) do
     new_state = Driver.get_stop_button_state
-    if new_state !== last_state, do: HWPolling.notify_update(pid_recipient, {:stop_button, new_state})
+    if new_state !== last_state, do: HWPolling.notify_update({:stop_button, new_state})
 
     # Recursion
     Process.sleep(Constants.hw_sensor_sleep_time)
-    state_change_reporter(pid_recipient, :stop_button, :not_a_floor, new_state)
+    state_change_reporter(:stop_button, :not_a_floor, new_state)
   end
 
-  def state_change_reporter(pid_recipient, :floor_sensor, _floor, last_state) do
+
+  def state_change_reporter(:floor_sensor, _floor, last_state) do
     new_state = Driver.get_floor_sensor_state
-    if new_state !== last_state, do: HWPolling.notify_update(pid_recipient, {:floor_sensor, new_state})
+    if new_state !== last_state, do: HWPolling.notify_update({:floor_sensor, new_state})
 
     # Recursion
     Process.sleep(Constants.hw_sensor_sleep_time)
-    state_change_reporter(pid_recipient, :floor_sensor, :not_a_floor, new_state)
+    state_change_reporter(:floor_sensor, :not_a_floor, new_state)
   end
 
 
   # Use this for order buttons (at_button_type is either :hall_up, :hall_down or :cab)
-  def state_change_reporter(pid_recipient, at_button_type, floor, last_state) do
+  def state_change_reporter(at_button_type, floor, last_state) do
     new_state = Driver.get_order_button_state(floor, at_button_type)
-    if new_state !== last_state, do: HWPolling.notify_update(pid_recipient, {at_button_type, floor, new_state})
+    if new_state !== last_state, do: HWPolling.notify_update({at_button_type, floor, new_state})
 
     # Recursion
     Process.sleep(Constants.hw_sensor_sleep_time)
-    state_change_reporter(pid_recipient, at_button_type, floor, new_state)
+    state_change_reporter(at_button_type, floor, new_state)
   end
 end
