@@ -18,9 +18,9 @@ defmodule Position do
     floor !== :between_floors
   end
 
-  def update(new_position) do
-    Agent.update(__MODULE__, __MODULE__, :calculate_update, [new_position])
-    DriverFSM.notify_position_updated(new_position)
+  def update(new_floor_or_direction) do
+    Agent.update(__MODULE__, __MODULE__, :calculate_update, [new_floor_or_direction])
+    DriverFSM.notify_position_updated(get)
   end
 
   def calculate_update(old_position, update) do

@@ -58,11 +58,12 @@ defmodule HWPolling do
   end
 
 
-  
+
   # Callbacks
 
   @impl true
   def handle_cast({:stop_button, new_state}, _state) do
+    # Do more?
     {:noreply, :stop_updated}
   end
 
@@ -73,20 +74,20 @@ defmodule HWPolling do
   end
 
   @impl true
-  def handle_cast({:cab, floor, :on}, _state) do
+  def handle_cast({:cab, floor, 1}, _state) do
     Queue.add_order({floor, :cab, :order})
     # Turn on light here?
     {:noreply, :order_received}
   end
 
   @impl true
-  def handle_cast({at_button_type, floor, :on}, _state) do
+  def handle_cast({at_button_type, floor, 1}, _state) do
     # Send to server here
     {:noreply, :order_received}
   end
 
   @impl true
-  def handle_cast({_at_button_, _floor, :off}, _state) do
+  def handle_cast({_at_button_, _floor, 0}, _state) do
     {:noreply, :order_button_low}
   end
 end
