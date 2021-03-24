@@ -14,8 +14,7 @@ defmodule DriverFSM do
   @impl true
   def init(_init_arg) do
     Actuator.change_direction(:down)
-    task = Task.async(__MODULE__, :loop_until_at_a_floor, [])
-    Task.await(task)
+    loop_until_at_a_floor
     Actuator.change_direction(:stop)
 
     # Exit init state
@@ -71,15 +70,15 @@ defmodule DriverFSM do
     end
   end
 
-  def notify_position_updated(new_position) do
-    GenServer.cast(__MODULE__, {:updated_position, new_position})
+
+  def notify_floor_updated(new_floor) do
+    GenServer.cast(__MODULE__, {:updated_floor, new_floor})
   end
 
   # Events when state == :driving_up
 
   @impl true
-  def handle_cast({:updated_position, new_position}, :driving_up) do
-    {new_floor, _new_direction} = new_position
+  def handle_cast({:updated_floor, new_floor}, :driving_up) do
     if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_up) do
       Actuator.change_direction(:stop)
       Actuator.open_door
@@ -90,7 +89,7 @@ defmodule DriverFSM do
       Queue.get_all_active_orders_above(new_floor, []) != [] ->
         Actuator.change_direction(:up)
         {:noreply, :driving_up}
-      
+
       Queue.get_all_active_orders_below(new_floor, []) != [] ->
         Actuator.change_direction(:down)
         {:noreply, :driving_down}
@@ -104,8 +103,7 @@ defmodule DriverFSM do
   # Events when state == :driving_down
 
   @impl true
-  def handle_cast({:updated_position, new_position}, :driving_down) do
-    {new_floor, _new_direction} = new_position
+  def handle_cast({:updated_floor, new_floor}, :driving_down) do
     if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_down) do
       Actuator.change_direction(:stop)
       Actuator.open_door
@@ -116,7 +114,7 @@ defmodule DriverFSM do
       Queue.get_all_active_orders_below(new_floor, []) != [] ->
         Actuator.change_direction(:down)
         {:noreply, :driving_down}
-      
+
         Queue.get_all_active_orders_above(new_floor, []) != [] ->
         Actuator.change_direction(:up)
         {:noreply, :driving_up}
@@ -126,7 +124,7 @@ defmodule DriverFSM do
     end
   end
 
-  
+
 
   defp calculate_difference_in_floor(_order_floor, :unknown_floor) do
     :unknown_diff
@@ -137,8 +135,8 @@ defmodule DriverFSM do
 
   def loop_until_at_a_floor() do
     Process.sleep(Constants.driver_wait_loop_sleep_time)
-    case Position.at_a_floor? do
-      false -> loop_until_at_a_floor()
+    cond do
+      not Position.at_a_floor? -> loop_until_at_a_floor()
       true -> :ok
     end
   end

@@ -1,4 +1,4 @@
-defmodule HWPolling do
+defmodule HWUpdateReceiver do
   @moduledoc """
   Server for receiving button-presses and floor updates and forewarding these to the correct module. Also acts as the supervisor for all 3*n buttons.
   The state of the server is the last update it has recevied.
@@ -21,9 +21,10 @@ defmodule HWPolling do
     {:ok, :receiving}
   end
 
-  def notify_update({at_button_type, update}) do
-    GenServer.cast(__MODULE__, {at_button_type, update})
+  def notify_update(sensor_change) do
+    GenServer.cast(__MODULE__, sensor_change)
   end
+
 
 
   # Callbacks
@@ -61,7 +62,7 @@ end
 
 
 
-defmodule HWSensor.Supervisor do
+defmodule HWPoller.Supervisor do
   
   use Supervisor
 
@@ -71,52 +72,52 @@ defmodule HWSensor.Supervisor do
 
   @impl true
   def init(_init_arg) do
-    children = [
-      {HWSensor, [:floor_sensor, :not_a_floor]},
-      {HWSensor, [:hall_up, Constants.number_of_floors]},
-      {HWSensor, [:hall_down, Constants.number_of_floors]},
-      {HWSensor, [:cab, Constants.number_of_floors]}
-    ]
+    children = list_children()
     
     Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  defp list_children() do
+    # Make list with elements %{id: String.to_atom(sensor_type <> "_floor_" <> floor), start: {HWPoller, :start_link, [at_sensor_type, floor/:not_a_floor]}}
+    hall_up_buttons = create_child_spec_of_button(:hall_up)
+
+    hall_down_buttons = create_child_spec_of_button(:hall_down)
+
+    cab_buttons = create_child_spec_of_button(:cab)
+
+    floor_sensor = [%{id: :floor_sensor_reporter, start: {HWPoller, :start_link, [:floor_sensor, :not_a_floor]}}]
+
+    hall_up_buttons ++ hall_down_buttons ++ cab_buttons ++ floor_sensor
+  end
+  defp create_child_spec_of_button(at_button_type) do
+    Enum.map(0..Constants.number_of_floors,
+    fn floor -> %{
+      id: String.to_atom(Atom.to_string(at_button_type) <> "_floor_" <> Integer.to_string(floor)),
+      start: {HWPoller, :start_link, [at_button_type, floor]}
+      }
+    end)
   end
 end
 
 
 
-defmodule HWSensor do
+defmodule HWPoller do
   @moduledoc """
   Module for implementing "interrupts" from the elevator into elixir in the form of standardized messages
   """
 
-  def child_spec(opts) do
-    %{
-      id: __MODULE__,
-      start: {__MODULE__, :start_link, opts},
-      type: :worker,
-      restart: :permanent,
-      shutdown: 500
-    }
-  end
+  use Task
 
-
-  def start_link(at_sensor_type, :not_a_floor) do
-    Task.start_link(__MODULE__, :state_change_reporter, [at_sensor_type, :not_a_floor, :init])
-  end
-
-  def start_link(_at_button_type, -1) do
-    :ok
-  end
-  def start_link(at_button_type, this_floor) do
-    Task.start_link(__MODULE__, :state_change_reporter, [at_button_type, this_floor, :init])
-    start_link(at_button_type, this_floor - 1)
+  def start_link(at_sensor_type, floor) do
+    #IO.puts("I just started " <> Atom.to_string(at_sensor_type) <>  " at floor " <> Integer.to_string(floor))
+    Task.start_link(__MODULE__, :state_change_reporter, [at_sensor_type, floor, :init])
   end
 
 
 
   def state_change_reporter(:stop_button, _floor, last_state) do
     new_state = Driver.get_stop_button_state
-    if new_state !== last_state, do: HWPolling.notify_update({:stop_button, new_state})
+    if new_state !== last_state, do: HWUpdateReceiver.notify_update({:stop_button, new_state})
 
     # Recursion
     Process.sleep(Constants.hw_sensor_sleep_time)
@@ -126,7 +127,7 @@ defmodule HWSensor do
 
   def state_change_reporter(:floor_sensor, _floor, last_state) do
     new_state = Driver.get_floor_sensor_state
-    if new_state !== last_state, do: HWPolling.notify_update({:floor_sensor, new_state})
+    if new_state !== last_state, do: HWUpdateReceiver.notify_update({:floor_sensor, new_state})
 
     # Recursion
     Process.sleep(Constants.hw_sensor_sleep_time)
@@ -137,7 +138,7 @@ defmodule HWSensor do
   # Use this for order buttons (at_button_type is either :hall_up, :hall_down or :cab)
   def state_change_reporter(at_button_type, floor, last_state) do
     new_state = Driver.get_order_button_state(floor, at_button_type)
-    if new_state !== last_state, do: HWPolling.notify_update({at_button_type, floor, new_state})
+    if new_state !== last_state, do: HWUpdateReceiver.notify_update({at_button_type, floor, new_state})
 
     # Recursion
     Process.sleep(Constants.hw_sensor_sleep_time)

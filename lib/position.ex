@@ -15,12 +15,12 @@ defmodule Position do
 
   def at_a_floor?() do
     {floor, _direction} = Position.get
-    floor !== :between_floors
+    is_integer(floor)
   end
 
   def update(new_floor_or_direction) do
     Agent.update(__MODULE__, __MODULE__, :calculate_update, [new_floor_or_direction])
-    DriverFSM.notify_position_updated(get)
+    if is_integer(new_floor_or_direction) do DriverFSM.notify_floor_updated(get) end
   end
 
   def calculate_update(old_position, update) do
@@ -35,12 +35,18 @@ defmodule Position do
       :between_floors ->
         case old_direction do
           :up ->
-            {old_floor + 0.5, old_direction}
+            {add_to_floor(old_floor, 0.5), old_direction}
           :down ->
-            {old_floor - 0.5, old_direction}
+            {add_to_floor(old_floor, -0.5), old_direction}
           :stop ->
             {old_floor, old_direction}
         end
     end
+  end
+  def add_to_floor(:unknown_floor, _num) do
+    :unknown_floor
+  end 
+  def add_to_floor(floor, num) do
+    floor + num
   end
 end
