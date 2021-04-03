@@ -14,32 +14,17 @@ defmodule DriverFSM do
   @impl true
   def init(_init_arg) do
     Actuator.change_direction(:down)
-    loop_until_at_a_floor
-    Actuator.change_direction(:stop)
 
-    # Exit init state
-    {floor, _dir} = Position.get
-    cond do
-      Queue.get_all_active_orders_above(floor, []) != [] ->
-        Actuator.change_direction(:up)
-        {:ok, :driving_up}
-
-      Queue.get_all_active_orders_below(floor, []) != [] ->
-        Actuator.change_direction(:down)
-        {:ok, :driving_down}
-
-      Queue.get_all_active_orders_at_floor(floor) != [] ->
-        Actuator.open_door
-        Queue.remove_all_orders_to_floor(floor)
-        {:ok, :queue_empty}
-
-      true ->
-        {:ok, :queue_empty}
-    end
+    {:ok, :driving_down}
   end
 
 
   # Events when state == :queue_empty
+
+  def handle_cast({:updated_floor, _new_floor}, :queue_empty) do
+    Actuator.change_direction(:stop)
+    {:noreply, :queue_empty}
+  end
 
   def notify_queue_updated(order) do
     GenServer.cast(__MODULE__, {:new_order, order})
@@ -85,12 +70,12 @@ defmodule DriverFSM do
       Queue.remove_all_orders_to_floor(new_floor)
     end
 
-    cond do
-      Queue.get_all_active_orders_above(new_floor, []) != [] ->
+    cond do # now we check for orders above and potentially attempt to move o.o.b if floor = number_of_floors -> FIX
+      Queue.active_orders_above_floor?(new_floor) ->
         Actuator.change_direction(:up)
         {:noreply, :driving_up}
 
-      Queue.get_all_active_orders_below(new_floor, []) != [] ->
+      Queue.active_orders_below_floor?(new_floor) ->
         Actuator.change_direction(:down)
         {:noreply, :driving_down}
 
@@ -111,11 +96,11 @@ defmodule DriverFSM do
     end
 
     cond do
-      Queue.get_all_active_orders_below(new_floor, []) != [] ->
+      Queue.active_orders_below_floor?(new_floor) ->
         Actuator.change_direction(:down)
         {:noreply, :driving_down}
 
-        Queue.get_all_active_orders_above(new_floor, []) != [] ->
+        Queue.active_orders_above_floor?(new_floor) ->  # Now the elevator will prefer to handle orders pick up 2d -> pick up 10000u -> deliver 2d. instead of taking 2d first
         Actuator.change_direction(:up)
         {:noreply, :driving_up}
 
@@ -125,6 +110,15 @@ defmodule DriverFSM do
   end
 
 
+  # Events which aren't to be acted on
+
+  @impl true
+  def handle_cast({:new_order, _order}, driving_dir) do
+    {:noreply, driving_dir}
+  end
+
+
+  # Helper functions
 
   defp calculate_difference_in_floor(_order_floor, :unknown_floor) do
     :unknown_diff
