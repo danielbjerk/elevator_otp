@@ -12,12 +12,6 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
   def start_link(_opts) do
     {:ok, _agent} = Agent.start_link(Queue, :generate_empty_queue, [], name: __MODULE__)
   end
-  """
-  # Fails for some (no) discernible reason
-  def start_link(initial_queue) do
-    {:ok, agent} = Agent.start_link(fn -> initial_queue end, name: __MODULE__)
-  end
-  """
 
   def generate_empty_queue do
     Enum.map(0..Constants.number_of_floors, fn floor -> [{floor, :hall_up, :no_order}, {floor, :hall_down, :no_order}, {floor, :cab, :no_order}] end)
@@ -72,26 +66,32 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     end)
   end
   
+
+  
   def order_compatible_with_direction_at_floor?(floor, compatible_order_type) do
     active_orders_at_floor = get_all_active_orders_at_floor(floor)
     ({floor, compatible_order_type, :order} in active_orders_at_floor) or ({floor, :cab, :order} in active_orders_at_floor)
   end
 
-  # call with (floor, []) to start
-  def get_all_active_orders_below(1, orders_so_far) do
-    [get_all_active_orders_at_floor(0) | orders_so_far]
-  end
-  def get_all_active_orders_below(floor, orders_so_far) do
-    get_all_active_orders_below(floor - 1, [get_all_active_orders_at_floor(floor - 1) | orders_so_far])
+  def active_orders_at_floor?(floor) do
+    get_all_active_orders_at_floor(floor) != []
   end
 
-  def get_all_active_orders_above(floor, orders_so_far) do
-    cond do
-      floor == Constants.number_of_floors - 1 -> [get_all_active_orders_at_floor(Constants.number_of_floors) | orders_so_far]
-      true -> get_all_active_orders_above(floor + 1, [get_all_active_orders_at_floor(floor + 1) | orders_so_far])
+  def active_orders_below_floor?(0) do
+    false
+  end
+  def active_orders_below_floor?(floor) do
+    active_orders_at_floor?(floor - 1) or active_orders_below_floor?(floor - 1)
+  end
+
+  def active_orders_above_floor?(floor) do
+    if floor == Constants.number_of_floors do
+      false
+    else
+      active_orders_at_floor?(floor + 1) or active_orders_above_floor?(floor + 1)
     end
   end
-
+  
 
 
   def order_type_to_queue_index(order_type) do
