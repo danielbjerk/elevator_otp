@@ -36,6 +36,7 @@ defmodule Actuator do
   @impl true
   def handle_cast({:open_door}, _driver_state) do
     Door.door_open_wait_until_closing
+    {:noreply, :door_closed}
   end
 end
 
