@@ -26,7 +26,8 @@ defmodule DriverFSM do
     {:noreply, :queue_empty}
   end
 
-  def notify_queue_updated(order) do
+  # TODO: functionality for periodically checking if queue is still empty, incase notify_queue_updated-call is lost
+  def notify_queue_updated(order) do  
     GenServer.cast(__MODULE__, {:new_order, order})
   end
   @impl true

@@ -58,6 +58,7 @@ defmodule Door do
   end
 
   defp door_open() do
+    # Should be calls to light, but door is implemented as just a light
     Driver.set_door_open_light(:on)
   end
 
@@ -87,10 +88,19 @@ defmodule Motor do
 end
 
 
-"""
+
 defmodule Lights do
-  def set_light_state(:door_open, state) do
-    {:ok, pid} = Task.start()
+  def turn_on(floor, order_type) do
+    Driver.set_order_button_light(order_type, floor, :on)
+  end
+
+  def turn_off(floor, order_type) do
+    Driver.set_order_button_light(order_type, floor, :off)
+  end
+
+  def turn_off_all_at_floor(floor) do
+    turn_off(floor, :hall_up)
+    turn_off(floor, :hall_down)
+    turn_off(floor, :cab)
   end
 end
-"""
