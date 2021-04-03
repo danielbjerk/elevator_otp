@@ -20,7 +20,11 @@ defmodule Position do
 
   def update(new_floor_or_direction) do
     Agent.update(__MODULE__, __MODULE__, :calculate_update, [new_floor_or_direction])
-    if is_integer(new_floor_or_direction) do DriverFSM.notify_floor_updated(get) end
+    if is_integer(new_floor_or_direction) do 
+      {floor, direction} = Position.get
+      DriverFSM.notify_floor_updated(floor)
+    end
+    #DriverFSM.notify_floor_updated(get)
   end
 
   def calculate_update(old_position, update) do
