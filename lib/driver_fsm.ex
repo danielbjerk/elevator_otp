@@ -27,7 +27,7 @@ defmodule DriverFSM do
   end
 
   # TODO: functionality for periodically checking if queue is still empty, incase notify_queue_updated-call is lost
-  def notify_queue_updated(order) do  
+  def notify_queue_updated(order) do
     GenServer.cast(__MODULE__, {:new_order, order})
   end
   @impl true
@@ -65,23 +65,20 @@ defmodule DriverFSM do
 
   @impl true
   def handle_cast({:updated_floor, new_floor}, :driving_up) do
-    if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_up) do
-      Actuator.change_direction(:stop)
-      Actuator.open_door
-      Queue.remove_all_orders_to_floor(new_floor)
-    end
+    if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_up), do: serve_all_orders_to_floor(new_floor)
 
-    cond do # now we check for orders above and potentially attempt to move o.o.b if floor = number_of_floors -> FIX
-      Queue.active_orders_above_floor?(new_floor) ->
-        Actuator.change_direction(:up)
-        {:noreply, :driving_up}
+    if Queue.active_orders_above_floor?(new_floor) do
+      Actuator.change_direction(:up)
+      {:noreply, :driving_up}
+    else
+      if Queue.active_orders_at_floor?(new_floor), do: serve_all_orders_to_floor(new_floor)
 
-      Queue.active_orders_below_floor?(new_floor) ->
+      if Queue.active_orders_below_floor?(new_floor) do
         Actuator.change_direction(:down)
         {:noreply, :driving_down}
-
-      true -> # Queue empty
+      else
         {:noreply, :queue_empty}
+      end
     end
   end
 
@@ -90,23 +87,20 @@ defmodule DriverFSM do
 
   @impl true
   def handle_cast({:updated_floor, new_floor}, :driving_down) do
-    if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_down) do
-      Actuator.change_direction(:stop)
-      Actuator.open_door
-      Queue.remove_all_orders_to_floor(new_floor)
-    end
+    if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_down), do: serve_all_orders_to_floor(new_floor)
 
-    cond do
-      Queue.active_orders_below_floor?(new_floor) ->
-        Actuator.change_direction(:down)
-        {:noreply, :driving_down}
+    if Queue.active_orders_below_floor?(new_floor) do
+      Actuator.change_direction(:down)
+      {:noreply, :driving_down}
+    else
+      if Queue.active_orders_at_floor?(new_floor), do: serve_all_orders_to_floor(new_floor)
 
-        Queue.active_orders_above_floor?(new_floor) ->  # Now the elevator will prefer to handle orders pick up 2d -> pick up 10000u -> deliver 2d. instead of taking 2d first
+      if Queue.active_orders_above_floor?(new_floor) do
         Actuator.change_direction(:up)
         {:noreply, :driving_up}
-
-      true -> # Queue empty
+      else
         {:noreply, :queue_empty}
+      end
     end
   end
 
@@ -126,6 +120,12 @@ defmodule DriverFSM do
   end
   defp calculate_difference_in_floor(order_floor, floor) do
     order_floor - floor
+  end
+
+  def serve_all_orders_to_floor(floor) do
+    Actuator.change_direction(:stop)
+    Actuator.open_door
+    Queue.remove_all_orders_to_floor(floor)
   end
 
   def loop_until_at_a_floor() do
