@@ -7,6 +7,7 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
   use Agent
 
 
+
   # Starting the queue
 
   def start_link(_opts) do
@@ -18,7 +19,8 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
   end
 
 
-  # Accessing the queue
+
+  # Accessing and modifying the queue
 
   def get do
     Agent.get(__MODULE__, fn queue -> queue end)
@@ -30,6 +32,7 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     
     {floor, order_type, _order_here} = order
     Lights.turn_on(floor, order_type) # Remember that the top level (distributor) only calls add_order as long as its keeping track of if order is alive
+    # Turn on light after order is broadcast and added to shared log?
   end
 
   def remove_all_orders_to_floor(floor) do
@@ -47,30 +50,9 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     List.replace_at(queue, floor, orders_at_floor_updated)
   end
 
-  """
-  def update_whole_queue(new_queue) do
-    Agent.update(a_queue, fn queue -> new_queue end)
-  end
-  """
 
 
-
-  def order_at_floor?(floor) do
-    orders_at_floor = Agent.get(__MODULE__, fn queue -> Enum.at(queue, floor) end)
-    ({floor, :hall_up, :order} in orders_at_floor) or ({floor, :hall_down, :order} in orders_at_floor) or ({floor, :cab, :order} in orders_at_floor)
-  end
-
-  def get_all_active_orders_at_floor(floor) do
-    orders_at_floor = Agent.get(__MODULE__, fn queue -> Enum.at(queue, floor) end)
-    Enum.filter(orders_at_floor, fn order ->
-      case order do
-        {_floor, _order_type, :order} -> true
-        _ -> false
-      end
-    end)
-  end
-  
-
+  # Boolean checks
   
   def order_compatible_with_direction_at_floor?(floor, compatible_order_type) do
     active_orders_at_floor = get_all_active_orders_at_floor(floor)
@@ -97,6 +79,18 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
   end
   
 
+  
+  # Helper functions
+
+  def get_all_active_orders_at_floor(floor) do
+    orders_at_floor = Agent.get(__MODULE__, fn queue -> Enum.at(queue, floor) end)
+    Enum.filter(orders_at_floor, fn order ->
+      case order do
+        {_floor, _order_type, :order} -> true
+        _ -> false
+      end
+    end)
+  end
 
   def order_type_to_queue_index(order_type) do
     case order_type do
