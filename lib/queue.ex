@@ -31,8 +31,7 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     DriverFSM.notify_queue_updated(order)
     
     {floor, order_type, _order_here} = order
-    Lights.turn_on(floor, order_type) # Remember that the top level (distributor) only calls add_order as long as its keeping track of if order is alive
-    # Turn on light after order is broadcast and added to shared log?
+    Lights.turn_on(floor, order_type)
   end
 
   def remove_all_orders_to_floor(floor) do
@@ -40,7 +39,7 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     Agent.update(__MODULE__, Queue, :update_order_in_queue, [{floor, :hall_down, :no_order}])
     Agent.update(__MODULE__, Queue, :update_order_in_queue, [{floor, :cab, :no_order}])
 
-    Lights.turn_off_all_at_floor(floor)  # TODO: call this as Task.start? as well as similar function which do not need to block/crash rest of software?
+    Lights.turn_off_all_at_floor(floor)
   end
 
   def update_order_in_queue(queue, order) do

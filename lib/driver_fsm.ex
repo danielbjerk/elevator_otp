@@ -7,7 +7,7 @@ defmodule DriverFSM do
 
   # Initialization of FSM
 
-  def start_link(_opts) do # Options?
+  def start_link(_opts) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
@@ -26,7 +26,6 @@ defmodule DriverFSM do
     {:noreply, :queue_empty}
   end
 
-  # TODO: functionality for periodically checking if queue is still empty, incase notify_queue_updated-call is lost
   def notify_queue_updated(order) do
     GenServer.cast(__MODULE__, {:new_order, order})
   end
@@ -36,7 +35,7 @@ defmodule DriverFSM do
     {order_floor, _order_type, _order_here} = order
 
     diff = calculate_difference_in_floor(order_floor, floor)
-    cond do # Line 39-54 may be abstracted into a function if desired.
+    cond do
       diff > 0 ->
         Actuator.change_direction(:up)
         {:noreply, :driving_up}

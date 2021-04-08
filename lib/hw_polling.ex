@@ -51,7 +51,6 @@ defmodule HWUpdateReceiver do
   @impl true
   def handle_cast({at_button_type, floor, 1}, _state) do
     Queue.add_order({floor, at_button_type, :order})    # Remove when adding distribution alg.
-    # Send to server here
     {:noreply, :order_received}
   end
 
@@ -81,9 +80,7 @@ defmodule HWPoller.Supervisor do
   defp list_children() do
     # Make list with elements %{id: String.to_atom(sensor_type <> "_floor_" <> floor), start: {HWPoller, :start_link, [at_sensor_type, floor/:not_a_floor]}}
     hall_up_buttons = create_child_spec_of_button(:hall_up)
-
     hall_down_buttons = create_child_spec_of_button(:hall_down)
-
     cab_buttons = create_child_spec_of_button(:cab)
 
     floor_sensor = [%{id: :floor_sensor_reporter, start: {HWPoller, :start_link, [:floor_sensor, :not_a_floor]}}]

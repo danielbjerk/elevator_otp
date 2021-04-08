@@ -24,7 +24,6 @@ defmodule Position do
       {floor, direction} = Position.get
       DriverFSM.notify_floor_updated(floor)
     end
-    #DriverFSM.notify_floor_updated(get)
   end
 
   def calculate_update(old_position, update) do
