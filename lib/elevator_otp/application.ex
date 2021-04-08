@@ -5,7 +5,7 @@ defmodule ElevatorOTP.Application do
 
   use Application
 
-  def start(_type, _args) do
+  def start(_type, _elevator_num) do
     children = [
       Driver,
       Queue,

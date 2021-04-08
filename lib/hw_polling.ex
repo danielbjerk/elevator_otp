@@ -50,6 +50,7 @@ defmodule HWUpdateReceiver do
 
   @impl true
   def handle_cast({at_button_type, floor, 1}, _state) do
+    Queue.add_order({floor, at_button_type, :order})    # Remove when adding distribution alg.
     # Send to server here
     {:noreply, :order_received}
   end
