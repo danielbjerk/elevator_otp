@@ -1,6 +1,6 @@
 defmodule DriverFSM do
   @moduledoc """
-  Server for implementing FSM controlling actions of the elevator, driving, stopping and opening of doors.
+  Server for implementing FSM controlling actions of the elevator; driving, stopping and opening of doors.
   """
 
   use GenServer
@@ -14,11 +14,11 @@ defmodule DriverFSM do
   @impl true
   def init(_init_arg) do
     Actuator.change_direction(:down)
-
     {:ok, :driving_down}
   end
 
 
+  
   # Events when state == :queue_empty
 
   def handle_cast({:updated_floor, _new_floor}, :queue_empty) do
@@ -36,7 +36,7 @@ defmodule DriverFSM do
     {order_floor, _order_type, _order_here} = order
 
     diff = calculate_difference_in_floor(order_floor, floor)
-    cond do
+    cond do # Line 39-54 may be abstracted into a function if desired.
       diff > 0 ->
         Actuator.change_direction(:up)
         {:noreply, :driving_up}
@@ -46,8 +46,7 @@ defmodule DriverFSM do
         {:noreply, :driving_down}
 
       diff == 0 ->
-        Actuator.open_door
-        Queue.remove_all_orders_to_floor(floor)
+        :ok = serve_all_orders_to_floor(floor)
         {:noreply, :queue_empty}
 
       :unknown_diff ->
@@ -61,17 +60,19 @@ defmodule DriverFSM do
     GenServer.cast(__MODULE__, {:updated_floor, new_floor})
   end
 
+
+
   # Events when state == :driving_up
 
   @impl true
   def handle_cast({:updated_floor, new_floor}, :driving_up) do
-    if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_up), do: serve_all_orders_to_floor(new_floor)
+    if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_up), do: :ok = serve_all_orders_to_floor(new_floor)
 
     if Queue.active_orders_above_floor?(new_floor) do
       Actuator.change_direction(:up)
       {:noreply, :driving_up}
     else
-      if Queue.active_orders_at_floor?(new_floor), do: serve_all_orders_to_floor(new_floor)
+      if Queue.active_orders_at_floor?(new_floor), do: :ok = serve_all_orders_to_floor(new_floor)
 
       if Queue.active_orders_below_floor?(new_floor) do
         Actuator.change_direction(:down)
@@ -83,17 +84,18 @@ defmodule DriverFSM do
   end
 
 
+
   # Events when state == :driving_down
 
   @impl true
   def handle_cast({:updated_floor, new_floor}, :driving_down) do
-    if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_down), do: serve_all_orders_to_floor(new_floor)
+    if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_down), do: :ok = serve_all_orders_to_floor(new_floor)
 
     if Queue.active_orders_below_floor?(new_floor) do
       Actuator.change_direction(:down)
       {:noreply, :driving_down}
     else
-      if Queue.active_orders_at_floor?(new_floor), do: serve_all_orders_to_floor(new_floor)
+      if Queue.active_orders_at_floor?(new_floor), do: :ok = serve_all_orders_to_floor(new_floor)
 
       if Queue.active_orders_above_floor?(new_floor) do
         Actuator.change_direction(:up)
@@ -105,12 +107,14 @@ defmodule DriverFSM do
   end
 
 
+
   # Events which aren't to be acted on
 
   @impl true
   def handle_cast({:new_order, _order}, driving_dir) do
     {:noreply, driving_dir}
   end
+
 
 
   # Helper functions
@@ -123,16 +127,14 @@ defmodule DriverFSM do
   end
 
   def serve_all_orders_to_floor(floor) do
-    Actuator.change_direction(:stop)
-    Actuator.open_door
-    Queue.remove_all_orders_to_floor(floor)
-  end
-
-  def loop_until_at_a_floor() do
-    Process.sleep(Constants.driver_wait_loop_sleep_time)
-    cond do
-      not Position.at_a_floor? -> loop_until_at_a_floor()
-      true -> :ok
+    # This funciton guarantees that we only ever open the door if the elevator is at a floor and at a standstill
+    # Expected output of :ok when all's good
+    if is_integer(floor) do
+      Actuator.change_direction(:stop)
+      Actuator.open_door
+      Queue.remove_all_orders_to_floor(floor)  
+    else
+      {:error, :invalid_floor_for_open_door}
     end
   end
 end
