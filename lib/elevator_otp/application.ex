@@ -13,7 +13,8 @@ defmodule ElevatorOTP.Application do
       HWUpdateReceiver,
       HWPoller.Supervisor,
       Actuator,
-      DriverFSM
+      DriverFSM,
+      Peer
       
       # Starts a worker by calling: ElevatorOtp.Worker.start_link(arg)
       # {ElevatorOtp.Worker, arg}

@@ -3,16 +3,9 @@ defmodule ElevatorOTP do
   Documentation for ElevatorOTP.
   """
 
-  @doc """
-  Hello world.
+  def start(elev_number) do
+    #Constants.set_elev_number(elev_number)
 
-  ## Examples
-
-      iex> ElevatorOTP.hello()
-      :world
-
-  """
-  def hello do
-    :world
+    ElevatorOTP.Application.start(:arg1, :arg2)
   end
 end

@@ -50,7 +50,8 @@ defmodule HWUpdateReceiver do
 
   @impl true
   def handle_cast({at_button_type, floor, 1}, _state) do
-    Queue.add_order({floor, at_button_type, :order})    # Remove when adding distribution alg.
+    #Queue.add_order({floor, at_button_type, :order})    # Remove when adding distribution alg.
+    Task.start(Peer, :handle_hall_call, [{floor, at_button_type, :order}])
     {:noreply, :order_received}
   end
 
