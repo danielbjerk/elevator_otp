@@ -4,8 +4,6 @@ defmodule ElevatorOTP do
   """
 
   def start(elev_number) do
-    #Constants.set_elev_number(elev_number)
-
-    ElevatorOTP.Application.start(:arg1, :arg2)
+    ElevatorOTP.Application.start(:type, [elev_number, :arg2])
   end
 end

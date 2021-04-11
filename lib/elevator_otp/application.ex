@@ -5,17 +5,18 @@ defmodule ElevatorOTP.Application do
 
   use Application
 
-  def start(_type, _elevator_num) do
+  def start(_type, [elev_number, _arg2]) do  # Extend args?
     children = [
-      Driver,
+      {Driver, [{127,0,0,1}, Constants.elev_number_to_driver_port(elev_number)]},
       Queue,
       Position,
       HWUpdateReceiver,
       HWPoller.Supervisor,
       Actuator,
       DriverFSM,
-      Peer
-      
+      {Peer, elev_number} # recall that start_link with mult. init args must be list
+      # Drivers args should be a map for security
+
       # Starts a worker by calling: ElevatorOtp.Worker.start_link(arg)
       # {ElevatorOtp.Worker, arg}
     ]

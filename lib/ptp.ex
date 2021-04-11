@@ -5,42 +5,44 @@ defmodule Peer do
 
     use GenServer
 
-    def start_link(_opts) do
-        GenServer.start_link(__MODULE__, [], name: __MODULE__)
+    def start_link(elev_number) do
+        GenServer.start_link(__MODULE__, elev_number, name: __MODULE__)
     end
 
     @impl true
-    def init(_init_arg) do
-        # Koble opp m/ andre heiser
+    def init(elev_number) do
         # Request min kø (i tilfelle jeg nettopp har vært dau)
+        
         # Starte pinger
         spawn fn -> ping_later end
+        
         # Initiere containers
 
-        {:ok, ip_info} = :inet.getif
-        case Enum.at(ip_info,0) do  # This should not be an enum.at
-          {my_ip, _router, {255, 255, 252, 0}} -> 
-            my_name = String.to_atom("elevator" <> to_string(Constants.get_elev_number) <> "@" <> Enum.join(Tuple.to_list(my_ip), "."))
-            Node.start(my_name)
-            Node.set_cookie(:safari)
+        # Starte node
+        my_name = elev_number_to_node_name(elev_number)   # Change
+        Node.start(my_name, :longnames, 15000)
+        Node.set_cookie(:safari)
+        #IO.inspect(my_name)
+        # Lagre elev_number her? Kun Peer som skal bruke
 
-            IO.inspect(my_name)
-          error -> 
-            :fuck
+        # Koble opp m/ andre heiser
+        case attempt_to_connect(elev_number) do
+            :pong -> {:ok, :ptp_elevator}
+            :pang -> {:ok, :single_elevator}
+            _else -> {:ok, :something_wrong}
         end
-        {:ok, :start_state}
     end
 
 
 
     def handle_hall_call(hall_order) do
-        IO.write("Hello I have recieved: ")
-        IO.inspect(hall_order)
+        #IO.write("I have recieved: ")
+        #IO.inspect(hall_order)
 
-        {replies, bad_nodes} = GenServer.multi_call(Peer, {:calculate_cost, hall_order}, 500)
+        {replies, bad_nodes} = GenServer.multi_call([Node.self | Node.list], Peer, {:calculate_cost, hall_order}, Constants.peer_wait_for_response)     # Obtuse for timeouts =/= infty
 
-        IO.write("I have gotten these costs: ")
-        IO.inspect(replies)
+        #IO.write("I have gotten these costs: ")
+        #IO.inspect(replies)
 
         {node_to_handle_order, _largest_cost} = Enum.min_by(replies, fn {_node, cost} -> cost end)
 
@@ -59,23 +61,6 @@ defmodule Peer do
         Lights.turn_on(floor, order_type)
     end
 
-    """
-    def handle_hall_call(hall_order) do
-        broadcast(&receive_hall_call/1, hall_order)
-        cost = CostFunction.calculate_cost(hall_order)
-        broadcast(&receive_cost/2,[hall_order, cost])
-    end
-    def receive_hall_call(hall_order) do
-        cost = CostFunction.calculate_cost(hall_order)
-        broadcast(&receive_cost/2,[hall_order, cost])
-    end
-    
-
-
-    defp broadcast(msg_func, args) do
-        Enum.each(Node.list, fn peer -> Node.spawn(peer, Peer, msg_func, args) end)
-    end
-    """
 
 
     def handle_info(:ping, state) do
@@ -87,17 +72,24 @@ defmodule Peer do
     defp ping_later do
         Process.send_after(self(), :ping, Constants.ping_wait_time_ms)
     end
+
+
+
+    def elev_number_to_node_name(elev_number) do #Men bør ikke elev_number lagres i Constants? I tilfelle den skal aksesseres igjen senere?
+        String.to_atom("elevator" <> to_string(elev_number) <> "@" <> Constants.elevator_ip_to_string)
+    end
+
+    def attempt_to_connect(my_elev_number) do
+        Node.ping(elev_number_to_node_name(rem(my_elev_number + 1, Constants.number_of_elevators + 1) + 1))
+    end
 end
 
 
 
 defmodule CostFunction do
     def calculate_cost(order) do
-        q = Queue.get
-        p = Position.get
-
         # calculate here
 
-        10000000000
+        :rand.uniform(10)        
     end
 end
