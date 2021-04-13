@@ -19,3 +19,5 @@ Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_do
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/elevator_otp](https://hexdocs.pm/elevator_otp).
 
+Elevator number n is started by first running the simulator with argument "--port (15657+n)", with the first elevator being n=0.
+Then the project may be compiled and ran and started with ElevatorOTP.start(n)
