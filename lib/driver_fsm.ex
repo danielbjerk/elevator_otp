@@ -116,7 +116,9 @@ defmodule DriverFSM do
   # Events which aren't to be acted on
 
   @impl true
-  def handle_cast({:new_order, _order}, driving_dir) do
+  def handle_cast({:new_order, {order_floor, _order_type, :order}}, driving_dir) do
+    {floor, dir} = Position.get
+    if order_floor == floor && dir == :stop, do: serve_all_orders_to_floor(order_floor)
     {:noreply, driving_dir}
   end
 
