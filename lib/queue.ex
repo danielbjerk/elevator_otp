@@ -28,18 +28,12 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
 
   def add_order(order) do
     Agent.update(__MODULE__, __MODULE__, :update_order_in_queue, [order])
-    DriverFSM.notify_queue_updated(order)
-    
-    {floor, order_type, _order_here} = order
-    Lights.turn_on(floor, order_type)
   end
 
   def remove_all_orders_to_floor(floor) do
     Agent.update(__MODULE__, Queue, :update_order_in_queue, [{floor, :hall_up, :no_order}])
     Agent.update(__MODULE__, Queue, :update_order_in_queue, [{floor, :hall_down, :no_order}])
     Agent.update(__MODULE__, Queue, :update_order_in_queue, [{floor, :cab, :no_order}])
-
-    Lights.turn_off_all_at_floor(floor)
   end
 
   def update_order_in_queue(queue, order) do

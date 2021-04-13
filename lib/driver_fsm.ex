@@ -137,7 +137,9 @@ defmodule DriverFSM do
     if is_integer(floor) do
       Actuator.change_direction(:stop)
       Actuator.open_door
-      Queue.remove_all_orders_to_floor(floor)  
+      :ok = Queue.remove_all_orders_to_floor(floor)
+      Lights.turn_off_all_at_floor(floor)
+      Peer.notify_orders_served(floor)
     else
       {:error, :invalid_floor_for_open_door}
     end
