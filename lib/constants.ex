@@ -1,7 +1,10 @@
 defmodule Constants do
   def number_of_elevators, do: 3
+  def all_elevators_range, do: 0..(number_of_elevators - 1)
 
-  def number_of_floors, do: 3
+  def bottom_floor, do: 0
+  def top_floor, do: 3
+  def all_floors_range, do: bottom_floor..top_floor
 
   def get_elevator_ip_string do # This is not really constant
     {:ok, ip_info} = :inet.getif

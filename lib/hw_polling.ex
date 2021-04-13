@@ -89,7 +89,7 @@ defmodule HWPoller.Supervisor do
     hall_up_buttons ++ hall_down_buttons ++ cab_buttons ++ floor_sensor
   end
   defp create_child_spec_of_button(at_button_type) do
-    Enum.map(0..Constants.number_of_floors,
+    Enum.map(Constants.all_floors_range,
     fn floor -> %{
       id: String.to_atom(Atom.to_string(at_button_type) <> "_floor_" <> Integer.to_string(floor)),
       start: {HWPoller, :start_link, [at_button_type, floor]}
