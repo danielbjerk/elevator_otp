@@ -81,41 +81,32 @@ defmodule Peer do
             [false, _bool] -> {:noreply, :single_elevator}
         end
         # if pong after downtime then request updatesping_later.?
+        # if pong when state single_elev, req q updates
     end
     def ping_later do
         IO.inspect("calling pinger")
-        Process.send_after(self(), :ping, Constants.ping_wait_time_ms)
+        Process.send_after(self(), :ping,1000)# Constants.ping_wait_time_ms)
     end
 
 
 
-    def elev_number_to_node_name(elev_number) do #Men bør ikke elev_number lagres i Constants? I tilfelle den skal aksesseres igjen senere?
-        String.to_atom("elevator" <> to_string(elev_number) <> "@" <> Constants.get_elevator_ip_string)
+    def elev_number_to_node_name(elev_number) do
+        String.to_atom("elevator" <> to_string(elev_number) <> "@" <> Constants.get_elevator_ip_string) # Her er pinging en by-effect -> BAD
     end
 
     def list_all_node_names_except() do
-        all_other_nodes_numbers = Enum.to_list(1..Constants.number_of_elevators)
+        all_other_nodes_numbers = Enum.to_list(Constants.all_elevators_range)
         all_other_nodes_names = Enum.map(all_other_nodes_numbers, &elev_number_to_node_name/1)
     end
     def list_all_node_names_except(list_of_elev_numbers) do
-        all_other_nodes_numbers = Enum.to_list(1..Constants.number_of_elevators) -- list_of_elev_numbers
+        all_other_nodes_numbers = Enum.to_list(Constants.all_elevators_range) -- list_of_elev_numbers
         all_other_nodes_names = Enum.map(all_other_nodes_numbers, &elev_number_to_node_name/1)
     end
 
-    def able_to_ping_any_or_all?(my_elev_number) do
+    def able_to_ping_any_or_all?(my_elev_number) do # Bad! Implement as multicall to :ping
         all_other_nodes_names = list_all_node_names_except([my_elev_number])
 
         [Enum.any?(all_other_nodes_names, fn name -> Node.ping(name) == :pong end),
         Enum.all?(all_other_nodes_names, fn name -> Node.ping(name) == :pong end)]
-    end
-end
-
-
-
-defmodule CostFunction do
-    def calculate_cost(order) do
-        # calculate here
-
-        :rand.uniform(10)        
     end
 end

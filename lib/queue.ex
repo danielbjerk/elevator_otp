@@ -15,7 +15,7 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
   end
 
   def generate_empty_queue do
-    Enum.map(0..Constants.number_of_floors, fn floor -> [{floor, :hall_up, :no_order}, {floor, :hall_down, :no_order}, {floor, :cab, :no_order}] end)
+    Enum.map(Constants.all_floors_range, fn floor -> [{floor, :hall_up, :no_order}, {floor, :hall_down, :no_order}, {floor, :cab, :no_order}] end)
   end
 
 
@@ -62,15 +62,16 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     get_all_active_orders_at_floor(floor) != []
   end
 
-  def active_orders_below_floor?(0) do
-    false
-  end
   def active_orders_below_floor?(floor) do
-    active_orders_at_floor?(floor - 1) or active_orders_below_floor?(floor - 1)
+    if floor == Constants.bottom_floor do
+      false
+    else
+      active_orders_at_floor?(floor - 1) or active_orders_below_floor?(floor - 1)
+    end
   end
 
   def active_orders_above_floor?(floor) do
-    if floor == Constants.number_of_floors do
+    if floor == Constants.top_floor do
       false
     else
       active_orders_at_floor?(floor + 1) or active_orders_above_floor?(floor + 1)
