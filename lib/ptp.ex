@@ -63,8 +63,8 @@ defmodule Peer do
         IO.inspect(floor)
 
         order = {floor, :cab, :order}
-        accept_order(order)
         {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order}, Constants.peer_wait_for_response)   #if timeout, then?
+        if replies != [], do: accept_order(order)
         {:noreply, :ptp_elevator}
     end
 
@@ -96,8 +96,8 @@ defmodule Peer do
         IO.write("From: ")
         IO.inspect(from)
 
-        accept_order(order)
         {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order}, Constants.peer_wait_for_response)
+        if replies != [], do: accept_order(order)
         {:reply, :ok, state}
     end
 

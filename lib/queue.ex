@@ -56,19 +56,23 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     get_all_active_orders_at_floor(floor) != []
   end
 
-  def active_orders_below_floor?(floor) do
-    if floor == Constants.bottom_floor do
+  def active_orders_below_floor?(floor_int_or_dec) do
+    floor_int = floor(floor_int_or_dec)
+
+    if floor_int == Constants.bottom_floor do
       false
     else
-      active_orders_at_floor?(floor - 1) or active_orders_below_floor?(floor - 1)
+      active_orders_at_floor?(floor_int - 1) or active_orders_below_floor?(floor_int - 1)
     end
   end
 
-  def active_orders_above_floor?(floor) do
-    if floor == Constants.top_floor do
+  def active_orders_above_floor?(floor_int_or_dec) do
+    floor_int = ceil(floor_int_or_dec)
+
+    if floor_int == Constants.top_floor do
       false
     else
-      active_orders_at_floor?(floor + 1) or active_orders_above_floor?(floor + 1)
+      active_orders_at_floor?(floor_int + 1) or active_orders_above_floor?(floor_int + 1)
     end
   end
   
