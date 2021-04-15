@@ -63,7 +63,7 @@ defmodule Peer do
         IO.inspect(floor)
 
         order = {floor, :cab, :order}
-        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order}, Constants.peer_wait_for_response)   #if timeout, then?
+        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response)   #if timeout, then?
         if replies != [], do: accept_order(order)
         {:noreply, :ptp_elevator}
     end
@@ -96,19 +96,21 @@ defmodule Peer do
         IO.write("From: ")
         IO.inspect(from)
 
-        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order}, Constants.peer_wait_for_response)
+        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response)
         if replies != [], do: accept_order(order)
         {:reply, :ok, state}
     end
 
     @impl true
-    def handle_call({:log_this_order, order}, from, state) do
+    def handle_call({:log_this_order, order, from_node}, from, state) do
         IO.inspect("-----------------------------------------")
         IO.write("I am logging order: ")
         IO.inspect(order)
         IO.write("From: ")
-        IO.inspect(from)
-        #OrderLogger.add_order(from, order) # TODO
+        IO.inspect(from_node)
+
+        IO.inspect(from_node)
+        OrderLogger.add_order(from_node, order)
         
         {floor, order_type, :order} = order
         if order_type != :cab, do: Lights.turn_on(floor, order_type)
@@ -117,11 +119,12 @@ defmodule Peer do
     end
 
     @impl true
-    def handle_call({:orders_served, floor}, from, state) do
-        #OrderLogger.remove_all_orders_to_floor(floor)  # TODO
+    def handle_call({:orders_served, floor, from_node}, from, state) do
         IO.inspect("-----------------------------------------")
         IO.write("I am clearing orders at floor: ")
         IO.inspect(floor)
+
+        OrderLogger.remove_all_orders_to_floor(from_node, floor)
         
         Lights.turn_off(floor, :hall_up)
         Lights.turn_off(floor, :hall_down)
@@ -168,7 +171,7 @@ defmodule Peer do
     end
 
     def notify_orders_served(floor) do
-        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:orders_served, floor}, Constants.peer_wait_for_response)
+        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:orders_served, floor, Node.self}, Constants.peer_wait_for_response)
         :ok
     end
 
