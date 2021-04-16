@@ -103,4 +103,8 @@ defmodule Lights do
     turn_off(floor, :hall_down)
     turn_off(floor, :cab)
   end
+
+  def turn_off_all do
+    Enum.each(Constants.all_floors_range, fn floor -> turn_off_all_at_floor(floor) end)
+  end
 end

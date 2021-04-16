@@ -11,25 +11,22 @@ defmodule Peer do
 
     @impl true
     def init(elev_number) do
-        # Initiere containers?
+        Lights.turn_off_all
 
-
-        # Starte node
         my_name = elev_number_to_node_name(elev_number)
         Node.start(my_name, :longnames, 15000)
         Node.set_cookie(:safari)
 
-
-        # Starte pinger
         ping_later
 
-
-        # Koble opp m/ andre heiser
         IO.inspect("Able to connect to other nodes?")
         res = able_to_ping_any?
         IO.inspect(res)
         if res do
-            # Request min kø (i tilfelle jeg nettopp har vært dau)
+            Task.start(__MODULE__, :recover_cab_calls, [])
+            
+            Task.start(__MODULE__, :recover_order_logger, [])
+            
             {:ok, :ptp_elevator}
         else
             {:ok, :single_elevator}
@@ -78,7 +75,6 @@ defmodule Peer do
         IO.write("has been assigned to: ")
         IO.inspect(node_to_assign_order)
 
-        #{reply, bad_reply} = GenServer.multi_call(node_to_assign_order, Peer, {:take_this_order, order}, Constants.peer_wait_for_response)  # if timeout, then?
         Node.spawn(node_to_assign_order, Peer, :take_this_order, [order])   # Would prefer this to be a call to the module, as to keep track of  the assigner
         {:noreply, :ptp_elevator}
     end
@@ -144,10 +140,42 @@ defmodule Peer do
         {:reply, cost, state}
     end
 
+    @impl true
+    def handle_call({:give_active_cab_calls_of_node, node_name}, _from, state) do
+        active_cab_calls = OrderLogger.get_all_active_orders_of_type(node_name, :cab)
+        {:reply, active_cab_calls, state}
+    end
+
+    @impl true
+    def handle_call({:give_active_orders}, _from, state) do
+        active_orders = Queue.get_all_active_orders
+        {:reply, active_orders, state}
+    end
 
 
 
+    def recover_cab_calls do
+        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_cab_calls_of_node, Node.self}, Constants.peer_wait_for_response)
+        
+        if (replies != []) do
+            Enum.each(replies, fn {_from, cab_calls} -> Enum.each(cab_calls, fn order -> take_this_order(order) end) end)
+            :ok
+        else
+            :fuck
+        end
+    end
 
+    def recover_order_logger do
+        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_orders}, Constants.peer_wait_for_response)
+
+        if (replies != []) do
+            Enum.each(replies, fn {from_node, active_orders} -> 
+                Enum.each(active_orders, fn order -> 
+                    GenServer.call(__MODULE__, {:log_this_order, order, from_node})
+                end)
+            end)
+        end
+    end
 
     def find_node_with_lowest_cost(order) do
         # This is obtuse when calling with timeout =/= infty
@@ -180,21 +208,24 @@ defmodule Peer do
 
     @impl true
     def handle_info(:ping_now, state) do
+        IO.inspect("-----------------------------------------")
         IO.inspect("Received ping-request")
         ping_later
 
         if able_to_ping_any? do
-            # if state == :single_elevator, do: request_state
+            # if state == :single_elevator, do: recover deres hall_orders
+            # Always: update my OrderLogger med deres Queue
             IO.inspect("Got response!")
             {:noreply, :ptp_elevator}
         else
+            # for elevs som ikke svarer på n pakker: ta ordrene lagret i OrderLogger på dem selv
             IO.inspect("No response!")
             {:noreply, :single_elevator}
         end
     end
     def ping_later do
         IO.inspect("Calling pinger")
-        Process.send_after(self(), :ping_now, 2000)# Constants.ping_wait_time_ms)
+        Process.send_after(self(), :ping_now, Constants.ping_wait_time_ms)
     end
 
     def able_to_ping_any? do
@@ -207,7 +238,6 @@ defmodule Peer do
     [Enum.any?(all_other_nodes_names, fn name -> Node.ping(name) == :pong end),
     Enum.all?(all_other_nodes_names, fn name -> Node.ping(name) == :pong end)]
     end
-
 
 
 
