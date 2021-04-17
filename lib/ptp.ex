@@ -17,35 +17,20 @@ defmodule Peer do
         Node.start(my_name, :longnames, 15000)
         Node.set_cookie(:safari)
 
-        #Task.start_link()
-        find_peers_later
-        ping_peers_later
-
-        IO.inspect("Able to connect to other nodes?")
-        res = false#able_to_ping_any?
-        IO.inspect(res)
-        if res do
-            Task.start(__MODULE__, :recover_cab_calls, [])
-            
-            Task.start(__MODULE__, :recover_order_logger, [])
-            
-            {:ok, :ptp_elevator}
-        else
-            {:ok, :single_elevator}
-        end
+        {:ok, :single_elevator}
     end
 
 
 
     def handle_order(order) do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:hw_order, order) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:hw_order, order)
 
         GenServer.cast(__MODULE__, {:new_order, order})
     end
 
     @impl true
     def handle_cast({:new_order, order}, :single_elevator) do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:new_order_single_elevator, order) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:new_order_single_elevator, order)
 
         accept_order(order)
         {:noreply, :single_elevator}
@@ -53,7 +38,7 @@ defmodule Peer do
 
     @impl true
     def handle_cast({:new_order, {floor, :cab, :order}}, :ptp_elevator) do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:new_cab_order_ptp_elevator, {floor, :cab, :order}) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:new_cab_order_ptp_elevator, {floor, :cab, :order})
 
         order = {floor, :cab, :order}
         {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response)   #if timeout, then?
@@ -65,7 +50,7 @@ defmodule Peer do
     def handle_cast({:new_order, order}, :ptp_elevator) do
         node_to_assign_order = find_node_with_lowest_cost(order)
 
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:new_order_ptp_elevator, [order, node_to_assign_order]) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:new_order_ptp_elevator, [order, node_to_assign_order])
 
         Node.spawn(node_to_assign_order, Peer, :take_this_order, [order])   # Would prefer this to be a call to the module, as to keep track of  the assigner
         {:noreply, :ptp_elevator}
@@ -78,7 +63,7 @@ defmodule Peer do
     end
     @impl true
     def handle_call({:take_this_order, order}, from, state) do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:take_this_order, [order, from]) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:take_this_order, [order, from])
 
         {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response)
         if replies != [], do: accept_order(order)
@@ -87,7 +72,7 @@ defmodule Peer do
 
     @impl true
     def handle_call({:log_this_order, order, from_node}, from, state) do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:log_this_order, [order, from_node]) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:log_this_order, [order, from_node])
 
         OrderLogger.add_order(from_node, order)
         
@@ -99,7 +84,7 @@ defmodule Peer do
 
     @impl true
     def handle_call({:orders_served, floor, from_node}, from, state) do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:orders_served, [floor, from_node]) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:orders_served, [floor, from_node])
 
         OrderLogger.remove_all_orders_to_floor(from_node, floor)
         
@@ -111,7 +96,7 @@ defmodule Peer do
 
     @impl true
     def handle_call({:calculate_cost, hall_order}, from, state) do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:orders_served, [hall_order, from]) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:orders_served, [hall_order, from])
 
         cost = Cost.calculate_cost_for_order(hall_order)
         {:reply, cost, state}
@@ -119,7 +104,7 @@ defmodule Peer do
 
     @impl true
     def handle_call({:give_active_cab_calls_of_node, node_name}, _from, state) do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:give_active_cab_calls_of_node, node_name) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:give_active_cab_calls_of_node, node_name)
 
         active_cab_calls = OrderLogger.get_all_active_orders_of_type(node_name, :cab)
         {:reply, active_cab_calls, state}
@@ -127,7 +112,7 @@ defmodule Peer do
 
     @impl true
     def handle_call({:give_active_orders}, from, state) do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:give_active_orders, from) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:give_active_orders, from)
 
         active_orders = Queue.get_all_active_orders
         {:reply, active_orders, state}
@@ -136,7 +121,7 @@ defmodule Peer do
 
 
     def recover_cab_calls do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:recovering_cab_calls, []) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:recovering_cab_calls, [])
 
         {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_cab_calls_of_node, Node.self}, Constants.peer_wait_for_response)
         
@@ -149,7 +134,7 @@ defmodule Peer do
     end
 
     def recover_order_logger do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:recovering_order_logger, []) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:recovering_order_logger, [])
 
         {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_orders}, Constants.peer_wait_for_response)
 
@@ -176,7 +161,7 @@ defmodule Peer do
 
 
     def accept_order(order) do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:accepting_order, order) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:accepting_order, order)
 
         :ok = Queue.add_order(order)
         
@@ -193,14 +178,27 @@ defmodule Peer do
 
 
 
-    @impl true  # Kan dette flyttes fra et handle_info-kall til en uendelig funksjon? Task under supervision? som heller sender viktige oppdateringer (ptp -> single) til ptp-serveren?
-    def handle_call({:found_new_peer, node_name}, _from, :single_elevator) do
-        # Do something?
+    def new_peer_found(node_name) do
+        GenServer.call(__MODULE__, {:new_peer_found, node_name})
+    end
+    @impl true
+    def handle_call({:new_peer_found, node_name}, _from, state) do
+        #OrderLogger.update_node_name_of_elevator_number(elev_num, potential_peer_name)
+
+        if state == :single_elevator do
+            Task.start(__MODULE__, :recover_cab_calls, [])
+            
+            Task.start(__MODULE__, :recover_order_logger, [])
+        end
+
         {:reply, :ok, :ptp_elevator}
     end
     
+    def no_peers_respond do
+        GenServer.call(__MODULE__, :no_peers_respond)
+    end
     @impl true
-    def handle_call(:found_no_peers, _from, :ptp_elevator) do
+    def handle_call(:no_peers_respond, _from, state) do
         # Do something?
         {:reply, :ok, :single_elevator}
     end
@@ -210,7 +208,7 @@ defmodule Peer do
     # Helper function
 
     def elev_number_to_node_name(elev_number) do
-        String.to_atom("elevator" <> to_string(elev_number) <> "@" <> Constants.get_elevator_ip_string) # Her er pinging en by-effect -> BAD
+        String.to_atom("elevator" <> to_string(elev_number) <> "@" <> Constants.get_elevator_ip_string) # Her er pinging en by-effect -> BAD Uansett ekkelt kall til dette som er dupllicate av funk i Pinger
     end
 
     # Call with list_of_elev_numbers_exceptions = [] to list all node names
@@ -222,7 +220,7 @@ end
 
 
 
-defmodule Pinger do
+defmodule Pinger do#Bør linkes til Peer
     use Task
     
     def start_link(_args) do
@@ -232,29 +230,27 @@ defmodule Pinger do
 
 
 
-    def find_peers do   # This function doesn't call Peer at all, does that make sense? After the call to Node.ping? Peer.peer_found
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:opening_socket, []) end
+    def find_peers do   # Denne funksjonen er stor og ekkel
+        if RuntimeConstants.debug?, do: Debug.print_debug(:opening_socket, [])
 
         my_elev_number = RuntimeConstants.get_elev_number
         port = Constants.elev_number_to_peer_pinger_port(my_elev_number)
         {:ok, socket} = :gen_udp.open(port, Constants.peer_pinger_opts)
         
-        Enum.each(Enum.to_list(Constants.all_elevators_range) -- [my_elev_number], fn elev_number ->
-            :gen_udp.send(socket, 
-            {255, 255, 255, 255}, 
-            Constants.elev_number_to_peer_pinger_port(elev_number),
-            RuntimeConstants.get_elev_number) end)  # Bør vi sende elevator_nr eller heller node.self? Pass på andre udp-broadcasts
+        broadcast_my_elev_number_to_all_ports(my_elev_number, socket)
         
         case :gen_udp.recv(socket, 0) do #Timeout? Hva hjelper det isåfall? jo stopper deadlock hvor alle bare venter på at andre skal bc-e
             {:ok, {ip, _port, elev_num_bin}} ->
                 elev_num = :binary.decode_unsigned(elev_num_bin)
                 
-                if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:received_udp_msg, elev_num) end
+                if RuntimeConstants.debug?, do: Debug.print_debug(:received_udp_msg, elev_num)
 
-                potential_peer_name = String.to_atom("elevator" <> to_string(elev_num) <> "@" <> Enum.join(Tuple.to_list(ip), "."))#elev_number_and_ip_to_node_name(elev_num, ip)
+                potential_peer_name = elev_number_and_ip_to_node_name(elev_num, ip)
+
                 if potential_peer_name not in [Node.self | Node.list] do
                     case Node.ping(potential_peer_name) do
-                        :pong -> :ok#OrderLogger.update_node_name_of_elevator_number(elev_num, potential_peer_name)
+                        :pong -> :ok
+                            Peer.new_peer_found(potential_peer_name)
                         :pang -> :ok
                     end
                 end
@@ -262,18 +258,21 @@ defmodule Pinger do
                 :fuck
         end
         
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:closing_socket, []) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:closing_socket, [])
         :gen_udp.close(socket)
 
-        Process.sleep(Constants.ping_wait_time_ms)
+        Process.sleep(Constants.find_peer_wait_time_ms)
         find_peers
     end
 
 
 
     def ping_peers do
-        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:ping_peers_now, []) end
+        if RuntimeConstants.debug?, do: Debug.print_debug(:ping_peers_now, [])
         
+        IO.write("My peers are")
+        IO.inspect(Node.list)
+
         response = Enum.map(Node.list, fn node_name -># Mye side-effects av map-kallet her nå
             case Node.ping(node_name) do
                 :pang ->
@@ -284,11 +283,29 @@ defmodule Pinger do
             end
         end)
         
-        unless :pong in response do
-            Peer.found_no_peers
+        IO.write("Result from pinging peers: ")
+        IO.inspect(response)
+        if not (:pong in response) do
+            Peer.no_peers_respond
         end
 
         Process.sleep(Constants.ping_wait_time_ms)
         ping_peers
+    end
+
+
+
+    # Helper functions
+
+    def elev_number_and_ip_to_node_name(elev_num, ip) do
+        String.to_atom("elevator" <> to_string(elev_num) <> "@" <> Enum.join(Tuple.to_list(ip), "."))
+    end
+
+    def broadcast_my_elev_number_to_all_ports(my_elev_number, socket) do    # Bør vi heller bc-e node.self?
+        Enum.each(Enum.to_list(Constants.all_elevators_range) -- [my_elev_number], fn elev_number ->
+            :gen_udp.send(socket, 
+            {255, 255, 255, 255}, 
+            Constants.elev_number_to_peer_pinger_port(elev_number),
+            RuntimeConstants.get_elev_number) end)
     end
 end

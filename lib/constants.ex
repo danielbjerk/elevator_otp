@@ -46,6 +46,8 @@ defmodule Constants do
 
   def ping_wait_time_ms, do: 2000
 
+  def find_peer_wait_time_ms, do: 5000
+
   
   # Hardware
 
@@ -59,7 +61,7 @@ end
 defmodule RuntimeConstants do
   use Agent
 
-  def start_link(elev_number, debug \\ true) do
+  def start_link(elev_number, debug \\ false) do
     Agent.start_link(fn -> {elev_number, debug} end, name: __MODULE__)
   end
 
