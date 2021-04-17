@@ -17,6 +17,7 @@ defmodule Peer do
         Node.start(my_name, :longnames, 15000)
         Node.set_cookie(:safari)
 
+        #Task.start_link()
         find_peers_later
         ping_peers_later
 
@@ -192,38 +193,16 @@ defmodule Peer do
 
 
 
-
+    @impl true  # Kan dette flyttes fra et handle_info-kall til en uendelig funksjon? Task under supervision? som heller sender viktige oppdateringer (ptp -> single) til ptp-serveren?
+    def handle_call({:found_new_peer, node_name}, _from, :single_elevator) do
+        # Do something?
+        {:reply, :ok, :ptp_elevator}
+    end
+    
     @impl true
-    def handle_info(:ping_now, state) do
-        IO.inspect("-----------------------------------------")
-        IO.inspect("Received ping-request")
-        ping_later
-
-        if able_to_ping_any? do
-            # if state == :single_elevator, do: recover deres hall_orders
-            # Always: update my OrderLogger med deres Queue
-            IO.inspect("Got response!")
-            {:noreply, :ptp_elevator}
-        else
-            # for elevs som ikke svarer på n pakker: ta ordrene lagret i OrderLogger på dem selv
-            IO.inspect("No response!")
-            {:noreply, :single_elevator}
-        end
-    end
-    def ping_later do
-        IO.inspect("Calling pinger")
-        Process.send_after(self(), :ping_now, Constants.ping_wait_time_ms)
-    end
-
-    def able_to_ping_any? do
-        all_other_nodes_names = list_all_node_names_except([RuntimeConstants.get_elev_number])
-        Enum.any?(all_other_nodes_names, fn node_name -> Node.ping(node_name) == :pong end)
-    end
-    def able_to_ping_any_or_all? do # Bad! Implement as multicall to :ping
-    all_other_nodes_names = list_all_node_names_except([RuntimeConstants.get_elev_number])
-
-    [Enum.any?(all_other_nodes_names, fn name -> Node.ping(name) == :pong end),
-    Enum.all?(all_other_nodes_names, fn name -> Node.ping(name) == :pong end)]
+    def handle_call(:found_no_peers, _from, :ptp_elevator) do
+        # Do something?
+        {:reply, :ok, :single_elevator}
     end
 
 
@@ -238,5 +217,78 @@ defmodule Peer do
     def list_all_node_names_except(list_of_elev_numbers_exceptions) do
         all_other_nodes_numbers = Enum.to_list(Constants.all_elevators_range) -- list_of_elev_numbers_exceptions
         all_other_nodes_names = Enum.map(all_other_nodes_numbers, &elev_number_to_node_name/1)
+    end
+end
+
+
+
+defmodule Pinger do
+    use Task
+    
+    def start_link(_args) do
+        Task.start_link(__MODULE__, :find_peers, [])
+        Task.start_link(__MODULE__, :ping_peers, [])
+    end
+
+
+
+    def find_peers do   # This function doesn't call Peer at all, does that make sense? After the call to Node.ping? Peer.peer_found
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:opening_socket, []) end
+
+        my_elev_number = RuntimeConstants.get_elev_number
+        port = Constants.elev_number_to_peer_pinger_port(my_elev_number)
+        {:ok, socket} = :gen_udp.open(port, Constants.peer_pinger_opts)
+        
+        Enum.each(Enum.to_list(Constants.all_elevators_range) -- [my_elev_number], fn elev_number ->
+            :gen_udp.send(socket, 
+            {255, 255, 255, 255}, 
+            Constants.elev_number_to_peer_pinger_port(elev_number),
+            RuntimeConstants.get_elev_number) end)  # Bør vi sende elevator_nr eller heller node.self? Pass på andre udp-broadcasts
+        
+        case :gen_udp.recv(socket, 0) do #Timeout? Hva hjelper det isåfall? jo stopper deadlock hvor alle bare venter på at andre skal bc-e
+            {:ok, {ip, _port, elev_num_bin}} ->
+                elev_num = :binary.decode_unsigned(elev_num_bin)
+                
+                if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:received_udp_msg, elev_num) end
+
+                potential_peer_name = String.to_atom("elevator" <> to_string(elev_num) <> "@" <> Enum.join(Tuple.to_list(ip), "."))#elev_number_and_ip_to_node_name(elev_num, ip)
+                if potential_peer_name not in [Node.self | Node.list] do
+                    case Node.ping(potential_peer_name) do
+                        :pong -> :ok#OrderLogger.update_node_name_of_elevator_number(elev_num, potential_peer_name)
+                        :pang -> :ok
+                    end
+                end
+            _timeout ->
+                :fuck
+        end
+        
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:closing_socket, []) end
+        :gen_udp.close(socket)
+
+        Process.sleep(Constants.ping_wait_time_ms)
+        find_peers
+    end
+
+
+
+    def ping_peers do
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:ping_peers_now, []) end
+        
+        response = Enum.map(Node.list, fn node_name -># Mye side-effects av map-kallet her nå
+            case Node.ping(node_name) do
+                :pang ->
+                    # if more pangs from this elev_num than allowed, (how to store??) take hall calls self (and mark as dead?)
+                    :pang
+                :pong ->
+                    :pong
+            end
+        end)
+        
+        unless :pong in response do
+            Peer.found_no_peers
+        end
+
+        Process.sleep(Constants.ping_wait_time_ms)
+        ping_peers
     end
 end
