@@ -45,11 +45,15 @@ end
 defmodule RuntimeConstants do
   use Agent
 
-  def start_link(elev_number) do
-    Agent.start_link(fn -> elev_number end, name: __MODULE__)
+  def start_link(elev_number, debug \\ true) do
+    Agent.start_link(fn -> {elev_number, debug} end, name: __MODULE__)
   end
 
   def get_elev_number do
-    Agent.get(__MODULE__, & &1)
+    Agent.get(__MODULE__, fn {elev_number, _debug} -> elev_number end)
+  end
+
+  def debug? do
+    Agent.get(__MODULE__, fn {_elev_number, debug} -> debug end)
   end
 end

@@ -17,10 +17,11 @@ defmodule Peer do
         Node.start(my_name, :longnames, 15000)
         Node.set_cookie(:safari)
 
-        ping_later
+        find_peers_later
+        ping_peers_later
 
         IO.inspect("Able to connect to other nodes?")
-        res = able_to_ping_any?
+        res = false#able_to_ping_any?
         IO.inspect(res)
         if res do
             Task.start(__MODULE__, :recover_cab_calls, [])
@@ -36,18 +37,14 @@ defmodule Peer do
 
 
     def handle_order(order) do
-        IO.inspect("-----------------------------------------")
-        IO.write("New order received from HW: ")
-        IO.inspect(order)
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:hw_order, order) end
 
         GenServer.cast(__MODULE__, {:new_order, order})
     end
 
     @impl true
     def handle_cast({:new_order, order}, :single_elevator) do
-        IO.inspect("-----------------------------------------")
-        IO.write("Accepting order in single elevator: ")
-        IO.inspect(order)
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:new_order_single_elevator, order) end
 
         accept_order(order)
         {:noreply, :single_elevator}
@@ -55,9 +52,7 @@ defmodule Peer do
 
     @impl true
     def handle_cast({:new_order, {floor, :cab, :order}}, :ptp_elevator) do
-        IO.inspect("-----------------------------------------")
-        IO.write("Accepting cab order in ptp-mode to floor: ")
-        IO.inspect(floor)
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:new_cab_order_ptp_elevator, {floor, :cab, :order}) end
 
         order = {floor, :cab, :order}
         {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response)   #if timeout, then?
@@ -69,11 +64,7 @@ defmodule Peer do
     def handle_cast({:new_order, order}, :ptp_elevator) do
         node_to_assign_order = find_node_with_lowest_cost(order)
 
-        IO.inspect("-----------------------------------------")
-        IO.inspect("The order: ")
-        IO.inspect(order)
-        IO.write("has been assigned to: ")
-        IO.inspect(node_to_assign_order)
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:new_order_ptp_elevator, [order, node_to_assign_order]) end
 
         Node.spawn(node_to_assign_order, Peer, :take_this_order, [order])   # Would prefer this to be a call to the module, as to keep track of  the assigner
         {:noreply, :ptp_elevator}
@@ -86,11 +77,7 @@ defmodule Peer do
     end
     @impl true
     def handle_call({:take_this_order, order}, from, state) do
-        IO.inspect("-----------------------------------------")
-        IO.write("I've been told to take order: ")
-        IO.inspect(order)
-        IO.write("From: ")
-        IO.inspect(from)
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:take_this_order, [order, from]) end
 
         {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response)
         if replies != [], do: accept_order(order)
@@ -99,13 +86,8 @@ defmodule Peer do
 
     @impl true
     def handle_call({:log_this_order, order, from_node}, from, state) do
-        IO.inspect("-----------------------------------------")
-        IO.write("I am logging order: ")
-        IO.inspect(order)
-        IO.write("From: ")
-        IO.inspect(from_node)
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:log_this_order, [order, from_node]) end
 
-        IO.inspect(from_node)
         OrderLogger.add_order(from_node, order)
         
         {floor, order_type, :order} = order
@@ -116,9 +98,7 @@ defmodule Peer do
 
     @impl true
     def handle_call({:orders_served, floor, from_node}, from, state) do
-        IO.inspect("-----------------------------------------")
-        IO.write("I am clearing orders at floor: ")
-        IO.inspect(floor)
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:orders_served, [floor, from_node]) end
 
         OrderLogger.remove_all_orders_to_floor(from_node, floor)
         
@@ -130,11 +110,7 @@ defmodule Peer do
 
     @impl true
     def handle_call({:calculate_cost, hall_order}, from, state) do
-        IO.inspect("-----------------------------------------")
-        IO.write("I am calculating cost for order: ")
-        IO.inspect(hall_order)
-        IO.write("From: ")
-        IO.inspect(from)
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:orders_served, [hall_order, from]) end
 
         cost = Cost.calculate_cost_for_order(hall_order)
         {:reply, cost, state}
@@ -142,12 +118,16 @@ defmodule Peer do
 
     @impl true
     def handle_call({:give_active_cab_calls_of_node, node_name}, _from, state) do
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:give_active_cab_calls_of_node, node_name) end
+
         active_cab_calls = OrderLogger.get_all_active_orders_of_type(node_name, :cab)
         {:reply, active_cab_calls, state}
     end
 
     @impl true
-    def handle_call({:give_active_orders}, _from, state) do
+    def handle_call({:give_active_orders}, from, state) do
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:give_active_orders, from) end
+
         active_orders = Queue.get_all_active_orders
         {:reply, active_orders, state}
     end
@@ -155,6 +135,8 @@ defmodule Peer do
 
 
     def recover_cab_calls do
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:recovering_cab_calls, []) end
+
         {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_cab_calls_of_node, Node.self}, Constants.peer_wait_for_response)
         
         if (replies != []) do
@@ -166,6 +148,8 @@ defmodule Peer do
     end
 
     def recover_order_logger do
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:recovering_order_logger, []) end
+
         {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_orders}, Constants.peer_wait_for_response)
 
         if (replies != []) do
@@ -177,6 +161,8 @@ defmodule Peer do
         end
     end
 
+
+
     def find_node_with_lowest_cost(order) do
         # This is obtuse when calling with timeout =/= infty
         my_cost = {Node.self, Cost.calculate_cost_for_order(order)}
@@ -186,9 +172,10 @@ defmodule Peer do
         node_with_lowest_cost
     end
 
+
+
     def accept_order(order) do
-        IO.write("I am accepting order ")
-        IO.inspect(order)
+        if RuntimeConstants.debug?, do: spawn fn -> Debug.print_debug(:accepting_order, order) end
 
         :ok = Queue.add_order(order)
         
