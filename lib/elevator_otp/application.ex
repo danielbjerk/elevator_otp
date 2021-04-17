@@ -7,6 +7,7 @@ defmodule ElevatorOTP.Application do
 
   def start(_type, [elev_number, _arg2]) do  # Extend args?
     children = [
+      {RuntimeConstants, elev_number},
       {Driver, [{127,0,0,1}, Constants.elev_number_to_driver_port(elev_number)]},
       Queue,
       Position,

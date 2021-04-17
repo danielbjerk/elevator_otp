@@ -10,6 +10,7 @@ defmodule Cost do
         cost + tuple_size(q) * 1
     end
 
+
     def add_direction_cost(cost, order) do  # Add cost due to direction of order. Can result in :no_cost.
         {order_floor, order_direction} = order
         if Queue.order_compatible_with_direction_at_floor?(order_floor, order_direction) do
@@ -32,6 +33,7 @@ defmodule Cost do
             add_distance_cost(0, position, order)
             |> add_queue_length_cost(q)
             |> add_direction_cost(order)
+
 
         rescue
 

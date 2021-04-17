@@ -13,8 +13,12 @@ defmodule DriverFSM do
 
   @impl true
   def init(_init_arg) do
-    Actuator.change_direction(:down)
-    {:ok, :driving_down}
+    if (Position.at_a_floor?) do
+      {:ok, :queue_empty}
+    else
+      Actuator.change_direction(:down)
+      {:ok, :driving_down}
+    end
   end
 
 
@@ -77,6 +81,7 @@ defmodule DriverFSM do
         Actuator.change_direction(:down)
         {:noreply, :driving_down}
       else
+        Actuator.change_direction(:stop)
         {:noreply, :queue_empty}
       end
     end
@@ -100,6 +105,7 @@ defmodule DriverFSM do
         Actuator.change_direction(:up)
         {:noreply, :driving_up}
       else
+        Actuator.change_direction(:stop)
         {:noreply, :queue_empty}
       end
     end
