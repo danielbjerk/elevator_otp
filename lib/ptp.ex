@@ -126,7 +126,11 @@ defmodule Peer do
         {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_cab_calls_of_node, Node.self}, Constants.peer_wait_for_response)
         
         if (replies != []) do
-            Enum.each(replies, fn {_from, cab_calls} -> Enum.each(cab_calls, fn order -> take_this_order(order) end) end)
+            Enum.each(replies, fn {_from, cab_calls} -> 
+                Enum.each(cab_calls, fn order -> 
+                    take_this_order(order) 
+                end) 
+            end)
             :ok
         else
             :fuck
@@ -214,9 +218,7 @@ defmodule Peer do
         node_with_lowest_cost
     end
 
-    def accept_order(order) do
-        IO.write("I am accepting order ")
-        IO.inspect(order)
+    
 
     # Helper function
 
