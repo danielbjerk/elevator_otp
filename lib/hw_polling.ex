@@ -42,16 +42,8 @@ defmodule HWUpdateReceiver do
   end
 
   @impl true
-  def handle_cast({:cab, floor, 1}, _state) do
-    Queue.add_order({floor, :cab, :order})
-    # Turn on light here?
-    {:noreply, :order_received}
-  end
-
-  @impl true
   def handle_cast({at_button_type, floor, 1}, _state) do
-    #Queue.add_order({floor, at_button_type, :order})    # Remove when adding distribution alg.
-    Task.start(Peer, :distribute_hall_call, [{floor, at_button_type, :order}])
+    Task.start(Peer, :handle_order, [{floor, at_button_type, :order}])
     {:noreply, :order_received}
   end
 
@@ -89,7 +81,7 @@ defmodule HWPoller.Supervisor do
     hall_up_buttons ++ hall_down_buttons ++ cab_buttons ++ floor_sensor
   end
   defp create_child_spec_of_button(at_button_type) do
-    Enum.map(0..Constants.number_of_floors,
+    Enum.map(Constants.all_floors_range,
     fn floor -> %{
       id: String.to_atom(Atom.to_string(at_button_type) <> "_floor_" <> Integer.to_string(floor)),
       start: {HWPoller, :start_link, [at_button_type, floor]}

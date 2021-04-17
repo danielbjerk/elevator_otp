@@ -10,6 +10,7 @@ defmodule ElevatorOTP.Application do
       {RuntimeConstants, elev_number},
       {Driver, [{127,0,0,1}, Constants.elev_number_to_driver_port(elev_number)]},
       Queue,
+      {OrderLogger, elev_number},
       Position,
       HWUpdateReceiver,
       HWPoller.Supervisor,
