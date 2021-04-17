@@ -53,7 +53,7 @@ defmodule Constants do
 
   def door_wait_for_obstruction_time_ms, do: 5000
 
-  def hw_sensor_sleep_time, do: 500
+  def hw_sensor_sleep_time, do: 100
 end
 
 
@@ -61,7 +61,7 @@ end
 defmodule RuntimeConstants do
   use Agent
 
-  def start_link(elev_number, debug \\ false) do
+  def start_link(elev_number, debug \\ true) do
     Agent.start_link(fn -> {elev_number, debug} end, name: __MODULE__)
   end
 

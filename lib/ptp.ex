@@ -183,7 +183,8 @@ defmodule Peer do
     end
     @impl true
     def handle_call({:new_peer_found, node_name}, _from, state) do
-        #OrderLogger.update_node_name_of_elevator_number(elev_num, potential_peer_name)
+        IO.inspect("New peer found!")
+        #OrderLogger.update_node_name_of_elevator_number(elev_num, node_name)
 
         if state == :single_elevator do
             Task.start(__MODULE__, :recover_cab_calls, [])
@@ -199,6 +200,7 @@ defmodule Peer do
     end
     @impl true
     def handle_call(:no_peers_respond, _from, state) do
+        IO.inspect("No peers are responding DD:")
         # Do something?
         {:reply, :ok, :single_elevator}
     end
@@ -287,6 +289,8 @@ defmodule Pinger do#Bør linkes til Peer
         IO.inspect(response)
         if not (:pong in response) do
             Peer.no_peers_respond
+        else    # This bad
+            Peer.new_peer_found(Enum.at(Node.list, 0))
         end
 
         Process.sleep(Constants.ping_wait_time_ms)
