@@ -16,6 +16,14 @@ defmodule Constants do
 
   # Network
 
+#  def elev_number_to_ip(elev_number) do
+#    case elev_number do
+#      0 -> 10.24.39.22
+#      1 -> 10.24.39.22
+#      2 -> 10.24.39.22
+#    end
+#  end
+
   def get_elevator_ip_string do # This is not really constant
     {:ok, ip_info} = :inet.getif
     case Enum.at(ip_info,0) do  # This should not be an enum.at
@@ -28,16 +36,24 @@ defmodule Constants do
     15657 + elev_number
   end
 
-  def peer_wait_for_response, do: 5000
+  def elev_number_to_peer_pinger_port(elev_number) do
+    30000 + elev_number
+  end
 
-  def ping_wait_time_ms, do: 1000
+  def peer_wait_for_response, do: 500
+
+  def peer_pinger_opts, do: [:binary, active: false, reuseaddr: true, broadcast: true]
+
+  def ping_wait_time_ms, do: 2000
+
+  def find_peer_wait_time_ms, do: 5000
 
   
   # Hardware
 
   def door_wait_for_obstruction_time_ms, do: 5000
 
-  def hw_sensor_sleep_time, do: 200
+  def hw_sensor_sleep_time, do: 100
 end
 
 
@@ -45,11 +61,15 @@ end
 defmodule RuntimeConstants do
   use Agent
 
-  def start_link(elev_number) do
-    Agent.start_link(fn -> elev_number end, name: __MODULE__)
+  def start_link(elev_number, debug \\ true) do
+    Agent.start_link(fn -> {elev_number, debug} end, name: __MODULE__)
   end
 
   def get_elev_number do
-    Agent.get(__MODULE__, & &1)
+    Agent.get(__MODULE__, fn {elev_number, _debug} -> elev_number end)
+  end
+
+  def debug? do
+    Agent.get(__MODULE__, fn {_elev_number, debug} -> debug end)
   end
 end

@@ -16,7 +16,9 @@ defmodule ElevatorOTP.Application do
       HWPoller.Supervisor,
       Actuator,
       DriverFSM,
-      {Peer, elev_number} # recall that start_link with mult. init args must be list
+      {Peer, elev_number},
+      Pinger  # Should be child of Peer?
+       # recall that start_link with mult. init args must be list
       # Drivers args should be a map for security
 
       # Starts a worker by calling: ElevatorOtp.Worker.start_link(arg)

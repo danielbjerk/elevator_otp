@@ -3,7 +3,7 @@ defmodule ElevatorOTP do
   Documentation for ElevatorOTP.
   """
 
-  def start(elev_number) do
-    ElevatorOTP.Application.start(:type, [elev_number, :arg2])
+  def start(elev_number, debug \\ true) do
+    ElevatorOTP.Application.start(:type, [elev_number, debug])
   end
 end
