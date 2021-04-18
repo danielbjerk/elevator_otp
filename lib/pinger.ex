@@ -13,7 +13,7 @@ defmodule Pinger do#Bør linkes til Peer
         IO.write("My peers are")
         IO.inspect(Node.list)
 
-        response = Enum.map(Peer.list_all_node_names_except(RuntimeConstants.get_elev_number), fn node_name -># Mye side-effects av map-kallet her nå
+        response = Enum.map(Peer.list_all_node_names_except([RuntimeConstants.get_elev_number]), fn node_name -># Mye side-effects av map-kallet her nå
             case Node.ping(node_name) do
                 :pang ->
                     # if more pangs from this elev_num than allowed, (how to store??) take hall calls self (and mark as dead?)
