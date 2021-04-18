@@ -161,14 +161,21 @@ defmodule Peer do
 
         if node_name == Node.self do
             active_hall_orders = Queue.get_all_active_hall_orders            
-            Enum.each(active_hall_orders, fn order -> handle_order(order) end)
+            Enum.each(active_hall_orders, fn order -> 
+                handle_order(order)
+                #Remove the order from your queue
+            end)
+            # Do not turn off lights
         else
             active_hall_orders = OrderLogger.get_all_active_hall_orders(node_name)
             Enum.each(active_hall_orders, fn order -> 
                 handle_order(order)
-                # Clear fra node_name sin OrderLogger
+                GenServer.multi_call(Node.list, )
+                
             end)
         end
+
+        # Mutlicall(:unlog_hall_orders_to, node_name)
         {:reply, :ok, state}
     end
 
