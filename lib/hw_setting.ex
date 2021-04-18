@@ -107,4 +107,8 @@ defmodule Lights do
   def turn_off_all do
     Enum.each(Constants.all_floors_range, fn floor -> turn_off_all_at_floor(floor) end)
   end
+
+  def change_floor_indicator(floor) do
+    Driver.set_floor_indicator(floor)
+  end
 end
