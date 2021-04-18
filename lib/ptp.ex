@@ -96,7 +96,7 @@ defmodule Peer do
 
     @impl true
     def handle_call({:calculate_cost, hall_order}, from, state) do
-        if RuntimeConstants.debug?, do: Debug.print_debug(:orders_served, [hall_order, from])
+        if RuntimeConstants.debug?, do: Debug.print_debug(:calculate_cost, [hall_order, from])
 
         cost = Cost.calculate_cost_for_order(hall_order)
         {:reply, cost, state}
@@ -151,26 +151,25 @@ defmodule Peer do
         end
     end
 
-    def redistribute_orders_of_node(node_name) do
-        GenServer.call(__MODULE__, {:redistribute_orders, node_name})
+    def redistribute_hall_orders_of_node(node_name) do
+        GenServer.call(__MODULE__, {:redistribute_hall_orders, node_name})
     end
     @impl true
-    def handle_call({:redistribute_orders, node_name}, _from, state) do
+    def handle_call({:redistribute_hall_orders, node_name}, _from, state) do
+        IO.write("Redistributing hall calls of elevator: ")
+        IO.inspect(node_name)
+
         if node_name == Node.self do
-
-            active_hall_orders = Enum.filter(Queue.get_all_active_orders, fn order ->
-                case order do
-                  {_floor, :cab, :order} -> false
-                  {_floor, _hall_up_or_down, :order} -> true
-                  _ -> false
-                end
-            end)
-            
+            active_hall_orders = Queue.get_all_active_hall_orders            
+            Enum.each(active_hall_orders, fn order -> handle_order(order) end)
         else
-            active_hall_orders = [OrderLogger.get_all_active_orders_of_type(node_name, :hall_up) | OrderLogger.get_all_active_orders_of_type(node_name, :hall_down)]
+            active_hall_orders = OrderLogger.get_all_active_hall_orders(node_name)
+            Enum.each(active_hall_orders, fn order -> 
+                handle_order(order)
+                # Clear fra node_name sin OrderLogger
+            end)
         end
-
-        Enum.each(active_hall_orders, fn order -> handle_order(order) end)
+        {:reply, :ok, state}
     end
 
 
@@ -179,6 +178,7 @@ defmodule Peer do
         my_cost = {Node.self, Cost.calculate_cost_for_order(order)}
         {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:calculate_cost, order}, Constants.peer_wait_for_response)
         all_costs = [my_cost | replies]
+        |> IO.inspect
         {node_with_lowest_cost, _lowest_cost} = Enum.min_by(all_costs, fn {_node, cost} -> cost end)
         node_with_lowest_cost
     end
