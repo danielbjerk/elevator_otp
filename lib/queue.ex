@@ -1,4 +1,4 @@
-defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
+defmodule Queue do
   @moduledoc """
   Agent which stores and deals with accessing the queue.
   Orders are tuples on the form {int floor, atom order_type, atom order/no_order}
@@ -56,8 +56,8 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     get_all_active_orders_at_floor(floor) != []
   end
 
-  def active_orders_below_floor?(floor_int_or_dec) do
-    floor_int = floor(floor_int_or_dec)
+  def active_orders_below_floor?(floor_float) do
+    floor_int = floor(floor_float)
 
     if floor_int == Constants.bottom_floor do
       false
@@ -66,8 +66,8 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
     end
   end
 
-  def active_orders_above_floor?(floor_int_or_dec) do
-    floor_int = ceil(floor_int_or_dec)
+  def active_orders_above_floor?(floor_float) do
+    floor_int = ceil(floor_float)
 
     if floor_int == Constants.top_floor do
       false
@@ -81,7 +81,8 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
   # Helper functions
 
   def get_all_active_orders do
-    List.flatten(Enum.map(Constants.all_floors_range, fn floor -> get_all_active_orders_at_floor(floor) end))
+    Enum.map(Constants.all_floors_range, fn floor -> get_all_active_orders_at_floor(floor) end)
+    |> List.flatten
   end
 
   def get_all_active_orders_at_floor(floor) do
@@ -150,7 +151,8 @@ defmodule OrderLogger do
   # Helper functions
 
   def get_all_active_orders(node) do
-    List.flatten(Enum.map(Constants.all_floors_range, fn floor -> get_all_active_orders_at_floor(node, floor) end))
+    Enum.map(Constants.all_floors_range, fn floor -> get_all_active_orders_at_floor(node, floor) end)
+    |> List.flatten
   end
 
   def get_all_active_orders_at_floor(node, floor) do
