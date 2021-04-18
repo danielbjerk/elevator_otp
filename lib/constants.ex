@@ -16,19 +16,11 @@ defmodule Constants do
 
   # Network
 
-#  def elev_number_to_ip(elev_number) do
-#    case elev_number do
-#      0 -> 10.24.39.22
-#      1 -> 10.24.39.22
-#      2 -> 10.24.39.22
-#    end
-#  end
-
-  def get_elevator_ip_string do # This is not really constant
-    {:ok, ip_info} = :inet.getif
-    case Enum.at(ip_info,0) do  # This should not be an enum.at
-      {my_ip, _router, {255, 255, _255_or_252, 0}} -> Enum.join(Tuple.to_list(my_ip), ".")
-      {:error, _error_msg} -> :failed_to_get_ip
+  def elev_number_to_ip(elev_number) do
+    case elev_number do
+      0 -> "10.24.37.6"
+      1 -> "172.18.35.115"
+      2 -> "10.22.78.229"
     end
   end
 

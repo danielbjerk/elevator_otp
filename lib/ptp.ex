@@ -222,8 +222,8 @@ defmodule Peer do
 
     # Helper function
 
-    def elev_number_to_node_name(elev_number) do
-        String.to_atom("elevator" <> to_string(elev_number) <> "@" <> Constants.get_elevator_ip_string) # Her er pinging en by-effect -> BAD Uansett ekkelt kall til dette som er dupllicate av funk i Pinger
+    def elev_number_to_node_name(elev_number) do    # Move to constants? Also used by pinger/OrderLogger
+        String.to_atom("elevator" <> to_string(elev_number) <> "@" <> Constants.elev_number_to_ip(elev_number)) # Her er pinging en by-effect -> BAD Uansett ekkelt kall til dette som er dupllicate av funk i Pinger
     end
 
     # Call with list_of_elev_numbers_exceptions = [] to list all node names
