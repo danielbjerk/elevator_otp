@@ -151,6 +151,27 @@ defmodule Peer do
         end
     end
 
+    def redistribute_orders_of_node(node_name) do
+        GenServer.call(__MODULE__, {:redistribute_orders, node_name})
+    end
+    @impl true
+    def handle_call({:redistribute_orders, node_name}, _from, state) do
+        if node_name == Node.self do
+
+            active_hall_orders = Enum.filter(Queue.get_all_active_orders, fn order ->
+                case order do
+                  {_floor, :cab, :order} -> false
+                  {_floor, _hall_up_or_down, :order} -> true
+                  _ -> false
+                end
+            end)
+            
+        else
+            active_hall_orders = [OrderLogger.get_all_active_orders_of_type(node_name, :hall_up) | OrderLogger.get_all_active_orders_of_type(node_name, :hall_down)]
+        end
+
+        Enum.each(active_hall_orders, fn order -> handle_order(order) end)
+    end
 
 
     def find_node_with_lowest_cost(order) do
@@ -207,15 +228,6 @@ defmodule Peer do
         IO.inspect("No peers are responding DD:")
         # Do something?
         {:reply, :ok, :single_elevator}
-    end
-
-    def find_node_with_lowest_cost(order) do
-        # This is obtuse when calling with timeout =/= infty
-        my_cost = {Node.self, Cost.calculate_cost_for_order(order)}
-        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:calculate_cost, order}, Constants.peer_wait_for_response)
-        all_costs = [my_cost | replies]
-        {node_with_lowest_cost, _lowest_cost} = Enum.min_by(all_costs, fn {_node, cost} -> cost end)
-        node_with_lowest_cost
     end
 
 
