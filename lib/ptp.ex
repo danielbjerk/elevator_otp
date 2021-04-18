@@ -168,6 +168,7 @@ defmodule Peer do
         if RuntimeConstants.debug?, do: Debug.print_debug(:accepting_order, order)
 
         :ok = Queue.add_order(order)
+        ResetableTimer.reset 
         
         {floor, order_type, _order_here} = order
         Lights.turn_on(floor, order_type)

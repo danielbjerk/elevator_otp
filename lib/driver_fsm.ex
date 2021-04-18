@@ -83,6 +83,7 @@ defmodule DriverFSM do
       else
         Actuator.change_direction(:stop)
         {:noreply, :queue_empty}
+
       end
     end
   end
@@ -106,6 +107,8 @@ defmodule DriverFSM do
         {:noreply, :driving_up}
       else
         Actuator.change_direction(:stop)
+        ResetableTimer.cancel
+      
         {:noreply, :queue_empty}
       end
     end

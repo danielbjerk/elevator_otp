@@ -17,7 +17,8 @@ defmodule ElevatorOTP.Application do
       Actuator,
       DriverFSM,
       {Peer, elev_number},
-      Pinger  # Should be child of Peer?
+      Pinger,  # Should be child of Peer?
+      ResetableTimer
        # recall that start_link with mult. init args must be list
       # Drivers args should be a map for security
 

@@ -144,6 +144,7 @@ defmodule OrderLogger do
 
     queue = logger[node]
     orders_at_floor = Enum.at(queue, floor)
+    
 
     orders_at_floor_updated = List.replace_at(orders_at_floor, order_type_to_queue_index(order_type), order)
     queue_updated = List.replace_at(queue, floor, orders_at_floor_updated)
