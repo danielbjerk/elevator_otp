@@ -21,3 +21,9 @@ be found at [https://hexdocs.pm/elevator_otp](https://hexdocs.pm/elevator_otp).
 
 Elevator number n is started by first running the simulator with argument "--port (15657+n)", with the first elevator being n=0.
 Then the project may be compiled and ran and started with ElevatorOTP.start(n)
+
+## Code Quality Standard
+See below for standard code needs to uphold
+
+- Modules are named in CamelCase, everything else is snake_case (required by Elixir)
+- Functions or variables in modules are NOT prepended like modulename_function_name
