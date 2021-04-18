@@ -85,13 +85,8 @@ defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
   end
 
   def get_all_active_orders_at_floor(floor) do
-    orders_at_floor = Agent.get(__MODULE__, fn queue -> Enum.at(queue, floor) end)
-    Enum.filter(orders_at_floor, fn order ->
-      case order do
-        {_floor, _order_type, :order} -> true
-        _ -> false
-      end
-    end)
+    Agent.get(__MODULE__, fn queue -> Enum.at(queue, floor) end)
+    |> Enum.filter(fn order -> match?({_floor, _order_type, :order}, order) end)
   end
 
   def order_type_to_queue_index(order_type) do
@@ -159,25 +154,14 @@ defmodule OrderLogger do
   end
 
   def get_all_active_orders_at_floor(node, floor) do
-    orders_at_floor = Agent.get(__MODULE__, fn logger -> Enum.at(logger[node], floor) end)
-    Enum.filter(orders_at_floor, fn order ->
-      case order do
-        {_floor, _order_type, :order} -> true
-        _ -> false
-      end
-    end)
+    Agent.get(__MODULE__, fn logger -> Enum.at(logger[node], floor) end)
+    |> Enum.filter(fn order -> match?({_floor, _order_type, :order}, order) end)
   end
   
   def get_all_active_orders_of_type(node, order_type) do
     get_queue_of_node(node)
     |> List.flatten
-    |> Enum.filter(fn order ->
-      case order do
-        {_floor, order_type, :order} -> true
-        _ -> false
-      end
-    end
-      )
+    |> Enum.filter(fn order -> match?({_floor, ^order_type, :order}, order) end)
   end
 
   def order_type_to_queue_index(order_type) do
