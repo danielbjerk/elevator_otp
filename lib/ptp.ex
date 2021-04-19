@@ -83,6 +83,15 @@ defmodule Peer do
     end
 
     @impl true
+    def handle_call({:unlog_hall_orders_to, node_name}, _from, state) do
+        IO.write("Unlogging hall_orders of :")
+        IO.inspect(node_name)
+
+        OrderLogger.pop_active_hall_orders(node_name)
+        {:reply, :ok, state}
+    end
+
+    @impl true
     def handle_call({:orders_served, floor, from_node}, from, state) do
         if RuntimeConstants.debug?, do: Debug.print_debug(:orders_served, [floor, from_node])
 
@@ -156,26 +165,23 @@ defmodule Peer do
     end
     @impl true
     def handle_call({:redistribute_hall_orders, node_name}, _from, state) do
-        IO.write("Redistributing hall calls of elevator: ")
+        IO.write("Redistributing hall orders of elevator: ")
         IO.inspect(node_name)
 
         if node_name == Node.self do
-            active_hall_orders = Queue.get_all_active_hall_orders            
+            active_hall_orders = Queue.pop_active_hall_orders
+            GenServer.multi_call(Node.list, Peer, {:unlog_hall_orders_to, node_name}, Constants.peer_wait_for_response)
             Enum.each(active_hall_orders, fn order -> 
                 handle_order(order)
-                #Remove the order from your queue
             end)
-            # Do not turn off lights
         else
-            active_hall_orders = OrderLogger.get_all_active_hall_orders(node_name)
+            active_hall_orders = OrderLogger.pop_active_hall_orders(node_name)
+            GenServer.multi_call(Node.list -- [node_name], Peer, {:unlog_hall_orders_to, node_name}, Constants.peer_wait_for_response)
             Enum.each(active_hall_orders, fn order -> 
                 handle_order(order)
-                GenServer.multi_call(Node.list, )
-                
             end)
         end
 
-        # Mutlicall(:unlog_hall_orders_to, node_name)
         {:reply, :ok, state}
     end
 
@@ -210,12 +216,12 @@ defmodule Peer do
 
 
 
-    def new_peer_found(node_name) do
-        GenServer.call(__MODULE__, {:new_peer_found, node_name})
+    def peers_respond do
+        GenServer.call(__MODULE__, :peers_respond)
     end
     @impl true
-    def handle_call({:new_peer_found, node_name}, _from, state) do
-        IO.inspect("New peer found!")
+    def handle_call(:peers_respond, _from, state) do
+        IO.inspect("I think I am online!")
         #OrderLogger.update_node_name_of_elevator_number(elev_num, node_name)
 
         if state == :single_elevator do
@@ -232,7 +238,7 @@ defmodule Peer do
     end
     @impl true
     def handle_call(:no_peers_respond, _from, state) do
-        IO.inspect("No peers are responding DD:")
+        IO.inspect("I think I am offline!")
         # Do something?
         {:reply, :ok, :single_elevator}
     end
