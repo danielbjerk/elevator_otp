@@ -87,7 +87,10 @@ defmodule Debug do
                 IO.inspect("Closing udp-socket")
 
             :ping_peers_now ->
-                
+                IO.write("My peers are")
+                IO.inspect(Enum.at(parameters, 0))
+                IO.write("They have failed to respond this many times: ")
+                IO.inspect(Enum.at(parameters, 1))
                 IO.inspect("Pinging peers!")
         end
     end
