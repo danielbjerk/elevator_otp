@@ -18,9 +18,9 @@ defmodule Constants do
 
   def elev_number_to_ip(elev_number) do
     case elev_number do
-      0 -> "10.24.37.6"
-      1 -> "172.18.35.115"
-      2 -> "10.22.78.229"
+      0 -> "10.50.10.53"
+      1 -> "10.50.10.53"
+      2 -> "10.50.10.53"
     end
   end
 

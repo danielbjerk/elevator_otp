@@ -85,6 +85,15 @@ defmodule Queue do
     |> List.flatten
   end
 
+  def get_all_active_hall_orders do
+    Enum.filter(get_all_active_orders, fn active_order ->
+      case active_order do
+        {_floor, :cab, :order} -> false
+        {_floor, _hall_up_or_down, :order} -> true
+      end
+    end)
+  end
+
   def get_all_active_orders_at_floor(floor) do
     Agent.get(__MODULE__, fn queue -> Enum.at(queue, floor) end)
     |> Enum.filter(fn order -> match?({_floor, _order_type, :order}, order) end)
@@ -153,6 +162,15 @@ defmodule OrderLogger do
   def get_all_active_orders(node) do
     Enum.map(Constants.all_floors_range, fn floor -> get_all_active_orders_at_floor(node, floor) end)
     |> List.flatten
+  end
+
+  def get_all_active_hall_orders(node) do
+    Enum.filter(get_all_active_orders(node), fn active_order ->
+      case active_order do
+        {_floor, :cab, :order} -> false
+        {_floor, _hall_up_or_down, :order} -> true
+      end
+    end)
   end
 
   def get_all_active_orders_at_floor(node, floor) do
