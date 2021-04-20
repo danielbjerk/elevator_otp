@@ -15,6 +15,7 @@ defmodule Actuator do
 
   @impl true
   def init(_init_args) do
+    Driver.set_door_open_light(:off)
     {:ok, :door_closed}
   end
 
