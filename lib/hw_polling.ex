@@ -111,7 +111,7 @@ defmodule HWPoller do
     if new_state !== last_state, do: HWUpdateReceiver.notify_update({:stop_button, new_state})
 
     # Recursion
-    Process.sleep(Constants.hw_sensor_sleep_time)
+    Process.sleep(Constants.hw_sensor_sleep_time_ms)
     state_change_reporter(:stop_button, :not_a_floor, new_state)
   end
 
@@ -121,7 +121,7 @@ defmodule HWPoller do
     if new_state !== last_state, do: HWUpdateReceiver.notify_update({:floor_sensor, new_state})
 
     # Recursion
-    Process.sleep(Constants.hw_sensor_sleep_time)
+    Process.sleep(Constants.hw_sensor_sleep_time_ms)
     state_change_reporter(:floor_sensor, :not_a_floor, new_state)
   end
 
@@ -132,7 +132,7 @@ defmodule HWPoller do
     if new_state !== last_state, do: HWUpdateReceiver.notify_update({at_button_type, floor, new_state})
 
     # Recursion
-    Process.sleep(Constants.hw_sensor_sleep_time)
+    Process.sleep(Constants.hw_sensor_sleep_time_ms)
     state_change_reporter(at_button_type, floor, new_state)
   end
 end

@@ -41,7 +41,7 @@ defmodule Peer do
         if RuntimeConstants.debug?, do: Debug.print_debug(:new_cab_order_ptp_elevator, {floor, :cab, :order})
 
         order = {floor, :cab, :order}
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response)   #if timeout, then?
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response_ms)   #if timeout, then?
         if replies != [], do: accept_order(order)
         {:noreply, :ptp_elevator}
     end
@@ -65,7 +65,7 @@ defmodule Peer do
     def handle_call({:take_this_order, order}, from, state) do
         if RuntimeConstants.debug?, do: Debug.print_debug(:take_this_order, [order, from])
 
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response)
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response_ms)
         if replies != [], do: accept_order(order)
         {:reply, :ok, state}
     end
@@ -132,7 +132,7 @@ defmodule Peer do
     def recover_cab_calls do
         if RuntimeConstants.debug?, do: Debug.print_debug(:recovering_cab_calls, [])
 
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_cab_calls_of_node, Node.self}, Constants.peer_wait_for_response)
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_cab_calls_of_node, Node.self}, Constants.peer_wait_for_response_ms)
         
         if (replies != []) do
             Enum.each(replies, fn {_from, cab_calls} -> 
@@ -149,7 +149,7 @@ defmodule Peer do
     def recover_order_logger do
         if RuntimeConstants.debug?, do: Debug.print_debug(:recovering_order_logger, [])
 
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_orders}, Constants.peer_wait_for_response)
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_orders}, Constants.peer_wait_for_response_ms)
 
         if (replies != []) do
             Enum.each(replies, fn {from_node, active_orders} -> 
@@ -170,13 +170,13 @@ defmodule Peer do
 
         if node_name == Node.self do
             active_hall_orders = Queue.pop_active_hall_orders
-            GenServer.multi_call(Node.list, Peer, {:unlog_hall_orders_to, node_name}, Constants.peer_wait_for_response)
+            GenServer.multi_call(Node.list, Peer, {:unlog_hall_orders_to, node_name}, Constants.peer_wait_for_response_ms)
             Enum.each(active_hall_orders, fn order -> 
                 handle_order(order)
             end)
         else
             active_hall_orders = OrderLogger.pop_active_hall_orders(node_name)
-            GenServer.multi_call(Node.list -- [node_name], Peer, {:unlog_hall_orders_to, node_name}, Constants.peer_wait_for_response)
+            GenServer.multi_call(Node.list -- [node_name], Peer, {:unlog_hall_orders_to, node_name}, Constants.peer_wait_for_response_ms)
             Enum.each(active_hall_orders, fn order -> 
                 handle_order(order)
             end)
@@ -189,7 +189,7 @@ defmodule Peer do
     def find_node_with_lowest_cost(order) do
         # This is obtuse when calling with timeout =/= infty
         my_cost = {Node.self, Cost.calculate_cost_for_order(order)}
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:calculate_cost, order}, Constants.peer_wait_for_response)
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:calculate_cost, order}, Constants.peer_wait_for_response_ms)
         all_costs = [my_cost | replies]
         |> IO.inspect
         {node_with_lowest_cost, _lowest_cost} = Enum.min_by(all_costs, fn {_node, cost} -> cost end)
@@ -210,7 +210,7 @@ defmodule Peer do
     end
 
     def notify_orders_served(floor) do
-        GenServer.multi_call(Node.list, Peer, {:orders_served, floor, Node.self}, Constants.peer_wait_for_response)
+        GenServer.multi_call(Node.list, Peer, {:orders_served, floor, Node.self}, Constants.peer_wait_for_response_ms)
         :ok
     end
 

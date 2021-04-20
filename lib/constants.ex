@@ -6,7 +6,6 @@ defmodule Constants do
   def all_elevators_range, do: 0..(number_of_elevators - 1)
 
 
-
   # Floors
 
   def bottom_floor, do: 0
@@ -28,29 +27,26 @@ defmodule Constants do
     15657 + elev_number
   end
 
-  def elev_number_to_peer_pinger_port(elev_number) do
-    30000 + elev_number
-  end
-
-  def peer_wait_for_response, do: 500
-
-  def peer_pinger_opts, do: [:binary, active: false, reuseaddr: true, broadcast: true]
+  def peer_wait_for_response_ms, do: 500
 
   def ping_wait_time_ms, do: 2000
-
-  def find_peer_wait_time_ms, do: 5000
 
   
   # Hardware
 
   def door_wait_for_obstruction_time_ms, do: 5000
 
-  def hw_sensor_sleep_time, do: 100
+  def hw_sensor_sleep_time_ms, do: 100
+  
 end
 
 
 
 defmodule RuntimeConstants do
+  @moduledoc """
+  Module for variables defined at runtime but which are to be constant after this.
+  """
+
   use Agent
 
   def start_link(elev_number, debug \\ true) do
