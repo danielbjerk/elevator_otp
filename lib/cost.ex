@@ -22,11 +22,11 @@ defmodule Cost do
     def add_direction_cost(cost, order, position) do
         {order_floor, order_direction, :order} = order
         {floor, direction} = position
-        diff = order_floor - floor
-        case (diff * order_direction_to_signed_int(order_direction)) do
-            1 -> cost - 10
-            -1 -> cost + 10
-            0 -> cost - 30
+        same_direction = ((order_floor - floor) * order_direction_to_signed_int(order_direction))
+        cond do
+            same_direction == 0 -> cost - 30
+            same_direction > 0 -> cost - 10
+            same_direction < 0 -> cost + 10
         end
     end
 
