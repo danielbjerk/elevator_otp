@@ -24,21 +24,32 @@ defmodule DriverFSM do
   end
 
 
-  
+  # Wrappers
+
+  def notify_position_updated(new_floor_or_direction) do
+    if is_integer(new_floor_or_direction) do
+      # Common actions for all states
+
+      if (new_floor_or_direction == Constants.bottom_floor) or (new_floor_or_direction == Constants.top_floor), do: Actuator.change_direction(:stop)
+      Lights.change_floor_indicator(new_floor_or_direction)
+      GenServer.cast(__MODULE__, {:updated_floor, new_floor_or_direction})
+    end
+
   # Events when state == :queue_empty
-
-  def handle_cast({:updated_floor, new_floor}, :queue_empty) do
-    if (new_floor == Constants.bottom_floor) or (new_floor == Constants.top_floor), do: Actuator.change_direction(:stop)
-
-    Lights.change_floor_indicator(new_floor)
-
-    Actuator.change_direction(:stop)
-    {:noreply, :queue_empty}
   end
 
   def notify_queue_updated(order) do
     GenServer.cast(__MODULE__, {:new_order, order})
   end
+
+
+  # Events when state == :queue_empty
+
+  def handle_cast({:updated_floor, _new_floor}, :queue_empty) do
+    Actuator.change_direction(:stop)
+    {:noreply, :queue_empty}
+  end
+
   @impl true
   def handle_cast({:new_order, order}, :queue_empty) do
     {floor, _direction} = Position.get
@@ -65,20 +76,11 @@ defmodule DriverFSM do
   end
 
 
-  def notify_floor_updated(new_floor) do
-    GenServer.cast(__MODULE__, {:updated_floor, new_floor})
-  end
-
-
 
   # Events when state == :driving_up
 
   @impl true
   def handle_cast({:updated_floor, new_floor}, :driving_up) do
-    if (new_floor == Constants.bottom_floor) or (new_floor == Constants.top_floor), do: Actuator.change_direction(:stop)
-    
-    Lights.change_floor_indicator(new_floor)
-
     if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_up), do: :ok = serve_all_orders_to_floor(new_floor)
 
     if Queue.active_orders_above_floor?(new_floor) do
@@ -103,10 +105,6 @@ defmodule DriverFSM do
 
   @impl true
   def handle_cast({:updated_floor, new_floor}, :driving_down) do
-    if (new_floor == Constants.bottom_floor) or (new_floor == Constants.top_floor), do: Actuator.change_direction(:stop)
-
-    Lights.change_floor_indicator(new_floor)
-
     if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_down), do: :ok = serve_all_orders_to_floor(new_floor)
 
     if Queue.active_orders_below_floor?(new_floor) do
