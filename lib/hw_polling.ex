@@ -30,7 +30,7 @@ defmodule HWUpdateReceiver do
   # Callbacks
 
   @impl true
-  def handle_cast({:stop_button, new_state}, _state) do
+  def handle_cast({:stop_button, _new_state}, _state) do
     # Do more?
     {:noreply, :stop_updated}
   end

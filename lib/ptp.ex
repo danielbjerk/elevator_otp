@@ -41,7 +41,7 @@ defmodule Peer do
         if RuntimeConstants.debug?, do: Debug.print_debug(:new_cab_order_ptp_elevator, {floor, :cab, :order})
 
         order = {floor, :cab, :order}
-        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response)   #if timeout, then?
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response)   #if timeout, then?
         if replies != [], do: accept_order(order)
         {:noreply, :ptp_elevator}
     end
@@ -65,13 +65,13 @@ defmodule Peer do
     def handle_call({:take_this_order, order}, from, state) do
         if RuntimeConstants.debug?, do: Debug.print_debug(:take_this_order, [order, from])
 
-        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response)
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response)
         if replies != [], do: accept_order(order)
         {:reply, :ok, state}
     end
 
     @impl true
-    def handle_call({:log_this_order, order, from_node}, from, state) do
+    def handle_call({:log_this_order, order, from_node}, _from, state) do
         if RuntimeConstants.debug?, do: Debug.print_debug(:log_this_order, [order, from_node])
 
         OrderLogger.add_order(from_node, order)
@@ -92,7 +92,7 @@ defmodule Peer do
     end
 
     @impl true
-    def handle_call({:orders_served, floor, from_node}, from, state) do
+    def handle_call({:orders_served, floor, from_node}, _from, state) do
         if RuntimeConstants.debug?, do: Debug.print_debug(:orders_served, [floor, from_node])
 
         OrderLogger.remove_all_orders_to_floor(from_node, floor)
@@ -132,7 +132,7 @@ defmodule Peer do
     def recover_cab_calls do
         if RuntimeConstants.debug?, do: Debug.print_debug(:recovering_cab_calls, [])
 
-        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_cab_calls_of_node, Node.self}, Constants.peer_wait_for_response)
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_cab_calls_of_node, Node.self}, Constants.peer_wait_for_response)
         
         if (replies != []) do
             Enum.each(replies, fn {_from, cab_calls} -> 
@@ -149,7 +149,7 @@ defmodule Peer do
     def recover_order_logger do
         if RuntimeConstants.debug?, do: Debug.print_debug(:recovering_order_logger, [])
 
-        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_orders}, Constants.peer_wait_for_response)
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_orders}, Constants.peer_wait_for_response)
 
         if (replies != []) do
             Enum.each(replies, fn {from_node, active_orders} -> 
@@ -189,7 +189,7 @@ defmodule Peer do
     def find_node_with_lowest_cost(order) do
         # This is obtuse when calling with timeout =/= infty
         my_cost = {Node.self, Cost.calculate_cost_for_order(order)}
-        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:calculate_cost, order}, Constants.peer_wait_for_response)
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:calculate_cost, order}, Constants.peer_wait_for_response)
         all_costs = [my_cost | replies]
         |> IO.inspect
         {node_with_lowest_cost, _lowest_cost} = Enum.min_by(all_costs, fn {_node, cost} -> cost end)
@@ -210,7 +210,7 @@ defmodule Peer do
     end
 
     def notify_orders_served(floor) do
-        {replies, bad_nodes} = GenServer.multi_call(Node.list, Peer, {:orders_served, floor, Node.self}, Constants.peer_wait_for_response)
+        GenServer.multi_call(Node.list, Peer, {:orders_served, floor, Node.self}, Constants.peer_wait_for_response)
         :ok
     end
 
@@ -237,7 +237,7 @@ defmodule Peer do
         GenServer.call(__MODULE__, :no_peers_respond)
     end
     @impl true
-    def handle_call(:no_peers_respond, _from, state) do
+    def handle_call(:no_peers_respond, _from, _state) do
         IO.inspect("I think I am offline!")
         # Do something?
         {:reply, :ok, :single_elevator}
