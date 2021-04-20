@@ -10,19 +10,26 @@ defmodule Cost do
         cost + length(q) * 1
     end
 
-    def no_cost() do
-        -10000
-    end
-
-
-    def add_direction_cost(cost, order) do  # Add cost due to direction of order. Can result in :no_cost.
+    def add_compatibility_cost(cost, order) do  # Add cost due to direction of order. Can result in :no_cost.
         {order_floor, order_direction, :order} = order
         if Queue.order_compatible_with_direction_at_floor?(order_floor, order_direction) do
-            no_cost()
+            cost - 5
         else
             cost + 10
         end
     end
+
+    def add_direction_cost(cost, order, position) do
+        {order_floor, order_direction, :order} = order
+        {floor, direction} = position
+        diff = order_floor - floor
+        case (diff * order_direction_to_signed_int(order_direction)) do
+            1 -> cost - 10
+            -1 -> cost + 10
+            0 -> cost - 30
+        end
+    end
+
 
     def calculate_cost_for_order(order) do
 
@@ -36,7 +43,8 @@ defmodule Cost do
 
             add_distance_cost(0, position, order)
             |> add_queue_length_cost(q)
-            |> add_direction_cost(order)
+            |> add_compatibility_cost(order)
+            |> add_direction_cost(order, position)
 
 
         rescue
@@ -54,5 +62,11 @@ defmodule Cost do
 
     end
 
+    def order_direction_to_signed_int(dir) do
+        case dir do
+            :hall_up -> 1
+            :hall_down -> -1
+        end
+    end
 
 end
