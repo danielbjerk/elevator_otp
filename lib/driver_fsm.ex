@@ -24,8 +24,22 @@ defmodule DriverFSM do
   end
 
 
-  
-  # Events when state == :queue_empty
+  # Wrappers
+
+  def notify_position_updated(new_floor_or_direction) do
+    if is_integer(new_floor_or_direction) do
+      # Common actions for all states
+
+      if (new_floor_or_direction == Constants.bottom_floor) or (new_floor_or_direction == Constants.top_floor), do: Actuator.change_direction(:stop)
+      Lights.change_floor_indicator(new_floor_or_direction)
+      GenServer.cast(__MODULE__, {:updated_floor, new_floor_or_direction})
+    end
+
+    if new_floor_or_direction == :between_floors do
+      {_floor, dir} = Position.get
+      Task.start(__MODULE__, :maintain_movement, [0, dir])
+    end
+  end
 
   def handle_cast({:updated_floor, new_floor}, :queue_empty) do
     if (new_floor == Constants.bottom_floor) or (new_floor == Constants.top_floor), do: Actuator.change_direction(:stop)
@@ -139,6 +153,18 @@ defmodule DriverFSM do
 
 
   # Helper functions
+
+  def maintain_movement(missed_count, motor_dir) do
+    {floor, _direction} = Position.get
+    if not is_integer(floor) do
+      if (rem(missed_count + 1, 50) == 0), do: Actuator.change_direction(motor_dir) # And redistribute my orders if rem 50 * 2
+      if (rem(missed_count + 1, 200) == 0), do: Peer.redistribute_hall_orders_of_node(Node.self)
+      # Add missed_count to cost
+
+      Process.sleep(100)
+      maintain_movement(missed_count + 1, motor_dir)
+    end
+  end
 
   defp calculate_difference_in_floor(_order_floor, :unknown_floor) do
     :unknown_diff
