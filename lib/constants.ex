@@ -31,6 +31,7 @@ defmodule Constants do
 
   def ping_wait_time_ms, do: 2000
 
+  def ping_allowed_missed_pings_num, do: 3
   
   # Hardware
 

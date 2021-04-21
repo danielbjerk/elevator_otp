@@ -54,15 +54,9 @@ defmodule DriverFSM do
   # Events when state == :queue_empty
   
   @impl true
-  def handle_cast({:updated_floor, new_floor}, :queue_empty) do
-    if (new_floor == Constants.bottom_floor) or (new_floor == Constants.top_floor), do: Actuator.change_direction(:stop)
-
-      if (new_floor_or_direction == Constants.bottom_floor) or (new_floor_or_direction == Constants.top_floor), do: Actuator.change_direction(:stop)
-      Lights.change_floor_indicator(new_floor_or_direction)
-      GenServer.cast(__MODULE__, {:updated_floor, new_floor_or_direction})
-    end
-
-  # Events when state == :queue_empty
+  def handle_cast({:updated_floor, _new_floor}, :queue_empty) do
+    Actuator.change_direction(:stop)
+    {:noreply, :queue_empty}
   end
 
   @impl true

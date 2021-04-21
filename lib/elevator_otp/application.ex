@@ -9,6 +9,7 @@ defmodule ElevatorOTP.Application do
     children = [
       {RuntimeConstants, elev_number},
       {Driver, [{127,0,0,1}, Constants.elev_number_to_driver_port(elev_number)]},
+      RepeatingTimeout,
       Queue,
       {OrderLogger, elev_number},
       Position,
@@ -17,8 +18,7 @@ defmodule ElevatorOTP.Application do
       Actuator,
       DriverFSM,
       {Peer, elev_number},
-      Pinger,
-      RepeatingTimeout  # Should be child of Peer?
+      Pinger  # Should be child of Peer?
        # recall that start_link with mult. init args must be list
       # Drivers args should be a map for security
 

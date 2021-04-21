@@ -2,7 +2,10 @@ defmodule Pinger do#Bør linkes til Peer
     use Task
     
     def start_link(_args) do
-        empty_ping_responses = Enum.map(Peer.list_all_node_names_except([RuntimeConstants.get_elev_number]), fn node_name -> [node_name, 0] end)
+        empty_ping_responses = Enum.map(
+            Peer.list_all_node_names_except([RuntimeConstants.get_elev_number]), 
+            fn node_name -> [node_name, Constants.ping_allowed_missed_pings_num] end
+            )
         Task.start_link(__MODULE__, :ping_peers, [empty_ping_responses])
     end
 
@@ -20,7 +23,7 @@ defmodule Pinger do#Bør linkes til Peer
             end
         end)
 
-        if Enum.any?(List.flatten(new_ping_responses), fn ans_or_name -> ans_or_name < 2 end) do
+        if Enum.any?(List.flatten(new_ping_responses), fn ans_or_name -> ans_or_name < Constants.ping_allowed_missed_pings_num end) do
             Peer.peers_respond
         else
             Peer.no_peers_respond   # Network timed out
@@ -45,6 +48,7 @@ defmodule RepeatingTimeout do
         GenServer.start_link(__MODULE__, [], name: __MODULE__)
     end
 
+    @impl true
     def init(_inital_value) do
         {:ok, %{}}
     end
@@ -104,7 +108,7 @@ defmodule RepeatingTimeout do
             {module, function_at, arguments} = timer_info[:action]
             Task.start(module, function_at, arguments)
             
-            new_active_timers = Map.update!(active_timers, id, fn timer -> Map.update!(timer_info, :timeouts, fn t -> t + 1 end) end)
+            new_active_timers = Map.update!(active_timers, id, fn _timer -> Map.update!(timer_info, :timeouts, fn t -> t + 1 end) end)
 
             timeout_every_ms = timer_info[:duration]
             Process.send_after(self, {:timeout, id}, timeout_every_ms)
