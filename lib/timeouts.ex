@@ -44,8 +44,14 @@ end
 
 
 defmodule RepeatingTimeout do
+    @moduledoc """
+    Module for implementing function-calls which are reapeated regularly before being cancelled.
+    """
 
     use GenServer
+
+
+    # Starting
 
     def start_link(_opts) do
         GenServer.start_link(__MODULE__, [], name: __MODULE__)
@@ -55,6 +61,9 @@ defmodule RepeatingTimeout do
     def init(_inital_value) do
         {:ok, %{}}
     end
+
+
+    # Wrappers/Interface
 
     def start_timer(id, timeout_every_ms, action_on_timeout) do
         GenServer.call(__MODULE__, {:start_timer, id, timeout_every_ms, action_on_timeout})
@@ -66,6 +75,8 @@ defmodule RepeatingTimeout do
         GenServer.call(__MODULE__, {:get_time, id})
     end
 
+
+    # Callbacks
 
     @impl true
     def handle_call({:start_timer, id, timeout_every_ms, action_on_timeout}, _from, active_timers) do
