@@ -3,7 +3,7 @@ defmodule Cost do
     def add_distance_cost(cost, position, order) do # Add cost due to distance between current position and order position.
         {elevator_floor, _elevator_direction} = position
         {order_floor, _order_direction, :order} = order
-        cost + Kernel.abs(order_floor - elevator_floor) * 2
+        cost + Kernel.abs(order_floor - elevator_floor) * 3
     end
 
     def add_queue_length_cost(cost, q) do   # Add cost due to current length of queue

@@ -8,12 +8,12 @@ defmodule Debug do
 
             :new_order_single_elevator ->
                 
-                IO.inspect("Accepting order in single elevator: ")
+                IO.inspect("New order in single elevator: ")
                 IO.inspect(parameters)
 
             :new_cab_order_ptp_elevator ->
                 
-                IO.inspect("Accepting cab order in ptp-mode to floor: ")
+                IO.inspect("New cab order in ptp-mode to floor: ")
                 IO.inspect(parameters)
 
             :new_order_ptp_elevator ->

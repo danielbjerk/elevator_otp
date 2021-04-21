@@ -57,10 +57,12 @@ defmodule DriverFSM do
   def handle_cast({:updated_floor, new_floor}, :queue_empty) do
     if (new_floor == Constants.bottom_floor) or (new_floor == Constants.top_floor), do: Actuator.change_direction(:stop)
 
-    Lights.change_floor_indicator(new_floor)
+      if (new_floor_or_direction == Constants.bottom_floor) or (new_floor_or_direction == Constants.top_floor), do: Actuator.change_direction(:stop)
+      Lights.change_floor_indicator(new_floor_or_direction)
+      GenServer.cast(__MODULE__, {:updated_floor, new_floor_or_direction})
+    end
 
-    Actuator.change_direction(:stop)
-    {:noreply, :queue_empty}
+  # Events when state == :queue_empty
   end
 
   @impl true
@@ -93,10 +95,6 @@ defmodule DriverFSM do
 
   @impl true
   def handle_cast({:updated_floor, new_floor}, :driving_up) do
-    if (new_floor == Constants.bottom_floor) or (new_floor == Constants.top_floor), do: Actuator.change_direction(:stop)
-    
-    Lights.change_floor_indicator(new_floor)
-
     if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_up), do: :ok = serve_all_orders_to_floor(new_floor)
 
     if Queue.active_orders_above_floor?(new_floor) do
@@ -121,10 +119,6 @@ defmodule DriverFSM do
 
   @impl true
   def handle_cast({:updated_floor, new_floor}, :driving_down) do
-    if (new_floor == Constants.bottom_floor) or (new_floor == Constants.top_floor), do: Actuator.change_direction(:stop)
-
-    Lights.change_floor_indicator(new_floor)
-
     if Queue.order_compatible_with_direction_at_floor?(new_floor, :hall_down), do: :ok = serve_all_orders_to_floor(new_floor)
 
     if Queue.active_orders_below_floor?(new_floor) do
