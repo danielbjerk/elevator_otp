@@ -23,6 +23,8 @@ Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_do
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/elevator_otp](https://hexdocs.pm/elevator_otp).
 
+Simulator is compiled by running `dmd -w -g src/sim_server.d src/timer_event.d -ofSimElevatorServer` and chmod-ing the output.
+
 
 ## Running the program
 After installation, the static IP of each elevator's computer must be stored in `constants.ex`.
