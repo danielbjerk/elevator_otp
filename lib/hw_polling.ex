@@ -43,7 +43,7 @@ defmodule HWUpdateServer do
 
   @impl true
   def handle_cast({at_button_type, floor, 1}, _state) do
-    Task.start(OrderDistribution, :handle_order, [{floor, at_button_type, :order}])
+    Task.start(OrderDistribution, :distribute_order, [{floor, at_button_type, :order}])
     {:noreply, :order_received}
   end
 

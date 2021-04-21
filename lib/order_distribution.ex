@@ -21,12 +21,91 @@ defmodule OrderDistribution do
     end
 
 
+    # Wrappers / Interface
 
-    def handle_order(order) do
+    def distribute_order(order) do
         if RuntimeConstants.debug?, do: Debug.print_debug(:hw_order, order)
 
         GenServer.cast(__MODULE__, {:new_order, order})
     end
+
+    def take_this_order(order) do
+        GenServer.call(__MODULE__, {:take_this_order, order})
+    end
+
+    def accept_order(order) do
+        if RuntimeConstants.debug?, do: Debug.print_debug(:accepting_order, order)
+
+        :ok = Queue.add_order(order)
+        
+        {floor, order_type, _order_here} = order
+        Lights.turn_on(floor, order_type)
+
+        DriverFSM.notify_queue_updated(order)
+    end
+
+    def redistribute_hall_orders_of_node(node_name) do
+        GenServer.call(__MODULE__, {:redistribute_hall_orders, node_name})
+    end
+
+    def notify_orders_served(floor) do
+        GenServer.multi_call(Node.list, OrderDistribution, {:orders_served, floor, Node.self}, Constants.peer_wait_for_response_ms)
+        :ok
+    end
+
+
+    def recover_cab_calls do
+        if RuntimeConstants.debug?, do: Debug.print_debug(:recovering_cab_calls, [])
+
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, OrderDistribution, {:give_active_cab_calls_of_node, Node.self}, Constants.peer_wait_for_response_ms)
+        
+        if (replies != []) do
+            Enum.each(replies, fn {_from, cab_calls} -> 
+                Enum.each(cab_calls, fn order -> 
+                    take_this_order(order) 
+                end) 
+            end)
+            :ok
+        else
+            :fuck
+        end
+    end
+
+    def recover_order_logger do
+        if RuntimeConstants.debug?, do: Debug.print_debug(:recovering_order_logger, [])
+
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, OrderDistribution, {:give_active_orders}, Constants.peer_wait_for_response_ms)
+
+        if (replies != []) do
+            Enum.each(replies, fn {from_node, active_orders} -> 
+                Enum.each(active_orders, fn order -> 
+                    GenServer.call(__MODULE__, {:log_this_order, order, from_node})
+                end)
+            end)
+        end
+    end
+
+    def find_node_with_lowest_cost(order) do
+        # This is obtuse when calling with timeout =/= infty
+        my_cost = {Node.self, Cost.calculate_cost_for_order(order)}
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, OrderDistribution, {:calculate_cost, order}, Constants.peer_wait_for_response_ms)
+        all_costs = [my_cost | replies]
+        |> IO.inspect
+        {node_with_lowest_cost, _lowest_cost} = Enum.min_by(all_costs, fn {_node, cost} -> cost end)
+        node_with_lowest_cost
+    end
+
+    
+
+    def peers_respond do
+        GenServer.call(__MODULE__, :peers_respond)
+    end
+    def no_peers_respond do
+        GenServer.call(__MODULE__, :no_peers_respond)
+    end
+
+
+    # Casts
 
     @impl true
     def handle_cast({:new_order, order}, :single_elevator) do
@@ -57,10 +136,8 @@ defmodule OrderDistribution do
     end
 
 
-
-    def take_this_order(order) do
-        GenServer.call(__MODULE__, {:take_this_order, order})
-    end
+    # Calls
+    
     @impl true
     def handle_call({:take_this_order, order}, from, state) do
         if RuntimeConstants.debug?, do: Debug.print_debug(:take_this_order, [order, from])
@@ -126,43 +203,7 @@ defmodule OrderDistribution do
         active_orders = Queue.get_all_active_orders
         {:reply, active_orders, state}
     end
-
-
-
-    def recover_cab_calls do
-        if RuntimeConstants.debug?, do: Debug.print_debug(:recovering_cab_calls, [])
-
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, OrderDistribution, {:give_active_cab_calls_of_node, Node.self}, Constants.peer_wait_for_response_ms)
-        
-        if (replies != []) do
-            Enum.each(replies, fn {_from, cab_calls} -> 
-                Enum.each(cab_calls, fn order -> 
-                    take_this_order(order) 
-                end) 
-            end)
-            :ok
-        else
-            :fuck
-        end
-    end
-
-    def recover_order_logger do
-        if RuntimeConstants.debug?, do: Debug.print_debug(:recovering_order_logger, [])
-
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, OrderDistribution, {:give_active_orders}, Constants.peer_wait_for_response_ms)
-
-        if (replies != []) do
-            Enum.each(replies, fn {from_node, active_orders} -> 
-                Enum.each(active_orders, fn order -> 
-                    GenServer.call(__MODULE__, {:log_this_order, order, from_node})
-                end)
-            end)
-        end
-    end
-
-    def redistribute_hall_orders_of_node(node_name) do
-        GenServer.call(__MODULE__, {:redistribute_hall_orders, node_name})
-    end
+    
     @impl true
     def handle_call({:redistribute_hall_orders, node_name}, _from, state) do
         IO.write("Redistributing hall orders of elevator: ")
@@ -172,53 +213,19 @@ defmodule OrderDistribution do
             active_hall_orders = Queue.pop_active_hall_orders
             GenServer.multi_call(Node.list, OrderDistribution, {:unlog_hall_orders_to, node_name}, Constants.peer_wait_for_response_ms)
             Enum.each(active_hall_orders, fn order -> 
-                handle_order(order)
+                distribute_order(order)
             end)
         else
             active_hall_orders = BackupQueue.pop_active_hall_orders(node_name)
             GenServer.multi_call(Node.list -- [node_name], OrderDistribution, {:unlog_hall_orders_to, node_name}, Constants.peer_wait_for_response_ms)
             Enum.each(active_hall_orders, fn order -> 
-                handle_order(order)
+                distribute_order(order)
             end)
         end
 
         {:reply, :ok, state}
     end
-
-
-    def find_node_with_lowest_cost(order) do
-        # This is obtuse when calling with timeout =/= infty
-        my_cost = {Node.self, Cost.calculate_cost_for_order(order)}
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, OrderDistribution, {:calculate_cost, order}, Constants.peer_wait_for_response_ms)
-        all_costs = [my_cost | replies]
-        |> IO.inspect
-        {node_with_lowest_cost, _lowest_cost} = Enum.min_by(all_costs, fn {_node, cost} -> cost end)
-        node_with_lowest_cost
-    end
-
-
-
-    def accept_order(order) do
-        if RuntimeConstants.debug?, do: Debug.print_debug(:accepting_order, order)
-
-        :ok = Queue.add_order(order)
-        
-        {floor, order_type, _order_here} = order
-        Lights.turn_on(floor, order_type)
-
-        DriverFSM.notify_queue_updated(order)   # change this to a call and repeat until reply?
-    end
-
-    def notify_orders_served(floor) do
-        GenServer.multi_call(Node.list, OrderDistribution, {:orders_served, floor, Node.self}, Constants.peer_wait_for_response_ms)
-        :ok
-    end
-
-
-
-    def peers_respond do
-        GenServer.call(__MODULE__, :peers_respond)
-    end
+    
     @impl true
     def handle_call(:peers_respond, _from, state) do
         IO.inspect("I think I am online!")
@@ -232,9 +239,6 @@ defmodule OrderDistribution do
         {:reply, :ok, :ptp_elevator}
     end
     
-    def no_peers_respond do
-        GenServer.call(__MODULE__, :no_peers_respond)
-    end
     @impl true
     def handle_call(:no_peers_respond, _from, _state) do
         IO.inspect("I think I am offline!")
