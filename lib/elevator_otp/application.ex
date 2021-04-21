@@ -14,7 +14,7 @@ defmodule ElevatorOTP.Application do
       HWUpdateServer,
       HWPoller.Supervisor,
       Actuator,
-      DriverFSM,
+      FSM,
       OrderDistribution,
       Pinger
     ]

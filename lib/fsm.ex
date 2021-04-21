@@ -1,4 +1,4 @@
-defmodule DriverFSM do
+defmodule FSM do
   @moduledoc """
   Server for implementing FSM controlling actions of the elevator; driving, stopping and opening of doors.
   """

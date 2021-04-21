@@ -41,7 +41,7 @@ defmodule OrderDistribution do
         {floor, order_type, _order_here} = order
         Lights.turn_on(floor, order_type)
 
-        DriverFSM.notify_queue_updated(order)
+        FSM.notify_queue_updated(order)
     end
 
     def redistribute_hall_orders_of_node(node_name) do
@@ -95,7 +95,7 @@ defmodule OrderDistribution do
         node_with_lowest_cost
     end
 
-    
+
 
     def peers_respond do
         GenServer.call(__MODULE__, :peers_respond)
