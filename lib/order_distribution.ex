@@ -5,15 +5,15 @@ defmodule OrderDistribution do
 
     use GenServer
 
-    def start_link(elev_number) do
-        GenServer.start_link(__MODULE__, elev_number, name: __MODULE__)
+    def start_link(_args) do
+        GenServer.start_link(__MODULE__, [], name: __MODULE__)
     end
 
     @impl true
-    def init(elev_number) do
+    def init(_init_args) do
         Lights.turn_off_all
 
-        my_name = elev_number_to_node_name(elev_number)
+        my_name = Constants.elev_number_to_node_name(RuntimeConstants.get_elev_number)
         Node.start(my_name, :longnames, 15000)
         Node.set_cookie(:safari)
 
@@ -239,19 +239,5 @@ defmodule OrderDistribution do
     def handle_call(:no_peers_respond, _from, _state) do
         IO.inspect("I think I am offline!")
         {:reply, :ok, :single_elevator}
-    end
-
-
-
-    # Helper function
-
-    def elev_number_to_node_name(elev_number) do    # Move to constants? Also used by pinger/BackupQueue
-        String.to_atom("elevator" <> to_string(elev_number) <> "@" <> Constants.elev_number_to_ip(elev_number)) # Her er pinging en by-effect -> BAD Uansett ekkelt kall til dette som er dupllicate av funk i Pinger
-    end
-
-    # Call with list_of_elev_numbers_exceptions = [] to list all node names
-    def list_all_node_names_except(list_of_elev_numbers_exceptions) do
-        all_other_nodes_numbers = Enum.to_list(Constants.all_elevators_range) -- list_of_elev_numbers_exceptions
-        all_other_nodes_names = Enum.map(all_other_nodes_numbers, &elev_number_to_node_name/1)
     end
 end

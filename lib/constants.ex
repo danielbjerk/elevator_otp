@@ -24,6 +24,19 @@ defmodule Constants do
     end
   end
 
+  def elev_number_to_node_name(elev_number) do
+    String.to_atom("elevator" <> to_string(elev_number) <> "@" <> elev_number_to_ip(elev_number))
+  end
+
+  def peer_list_all_my_peers do
+    peer_list_all_node_names_except([RuntimeConstants.get_elev_number])
+  end
+  # Call with list_of_elev_numbers_exceptions = [] to list all node names
+  def peer_list_all_node_names_except(list_of_elev_numbers_exceptions) do
+    all_other_nodes_numbers = Enum.to_list(Constants.all_elevators_range) -- list_of_elev_numbers_exceptions
+    all_other_nodes_names = Enum.map(all_other_nodes_numbers, &elev_number_to_node_name/1)
+  end
+
   def peer_wait_for_response_ms, do: 500
 
   def ping_wait_time_ms, do: 2000

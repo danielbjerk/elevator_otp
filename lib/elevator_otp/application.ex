@@ -9,13 +9,13 @@ defmodule ElevatorOTP.Application do
       {Driver, [{127,0,0,1}, driver_port]},
       RepeatingTimeout,
       Queue,
-      {BackupQueue, elev_number},
+      BackupQueue,
       Position,
       HWUpdateServer,
       HWPoller.Supervisor,
       Actuator,
       DriverFSM,
-      {OrderDistribution, elev_number},
+      OrderDistribution,
       Pinger
     ]
 

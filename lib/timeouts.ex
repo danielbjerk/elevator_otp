@@ -3,7 +3,7 @@ defmodule Pinger do
     
     def start_link(_args) do
         empty_ping_responses = Enum.map(
-            OrderDistribution.list_all_node_names_except([RuntimeConstants.get_elev_number]), 
+            Constants.peer_list_all_my_peers, 
             fn node_name -> [node_name, Constants.ping_allowed_missed_pings_num] end
             )
         Task.start_link(__MODULE__, :ping_peers, [empty_ping_responses])

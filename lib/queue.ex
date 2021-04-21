@@ -124,12 +124,12 @@ end
 defmodule BackupQueue do
   use Agent
 
-  def start_link(my_elev_number) do
-    {:ok, _agent} = Agent.start_link(__MODULE__, :generate_empty_logger, [my_elev_number], name: __MODULE__)
+  def start_link(_args) do
+    {:ok, _agent} = Agent.start_link(__MODULE__, :generate_empty_logger, [], name: __MODULE__)
   end
 
-  def generate_empty_logger(my_elev_number) do
-    Map.new(OrderDistribution.list_all_node_names_except([my_elev_number]), fn name -> {name, generate_empty_queue} end)
+  def generate_empty_logger do
+    Map.new(Constants.peer_list_all_my_peers, fn name -> {name, generate_empty_queue} end)
   end
   def generate_empty_queue do
     Enum.map(Constants.all_floors_range, fn floor -> [{floor, :hall_up, :no_order}, {floor, :hall_down, :no_order}, {floor, :cab, :no_order}] end)
