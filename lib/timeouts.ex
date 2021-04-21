@@ -66,8 +66,7 @@ defmodule RepeatingTimeout do
 
     @impl true
     def handle_call({:start_timer, id, timeout_every_ms, action_on_timeout}, _from, active_timers) do
-        IO.write("Starting timer: ")
-        IO.inspect(id)
+        if RuntimeConstants.debug?, do: Debug.print_debug(:starting_timer, id)
 
         new_active_timers = Map.put_new(active_timers, id, %{duration: timeout_every_ms, action: action_on_timeout, timeouts: 0})
         Process.send_after(self, {:timeout, id}, timeout_every_ms)
@@ -76,8 +75,7 @@ defmodule RepeatingTimeout do
 
     @impl true
     def handle_call({:stop_timer, id}, _from, active_timers) do
-        IO.write("Stopping timer: ")
-        IO.inspect(id)
+        if RuntimeConstants.debug?, do: Debug.print_debug(:stopping_timer, id)
 
         {_timer_info, new_active_timers} = Map.pop(active_timers, id)
         {:reply, :stopped, new_active_timers}
@@ -98,11 +96,9 @@ defmodule RepeatingTimeout do
 
     @impl true
     def handle_info({:timeout, id}, active_timers) do
-        IO.write("Timer ")
-        IO.inspect(id)
-        IO.write("Timed out!")
-
         if Map.has_key?(active_timers, id) do
+            if RuntimeConstants.debug?, do: Debug.print_debug(:timer_timedout, id)
+
             timer_info = active_timers[id]
 
             {module, function_at, arguments} = timer_info[:action]

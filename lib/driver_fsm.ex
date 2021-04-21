@@ -41,8 +41,8 @@ defmodule DriverFSM do
 
     if new_floor_or_direction == :between_floors do
       {_floor, dir} = Position.get
-      RepeatingTimeout.start_timer(:maintain_movement, 500, {Actuator, :change_direction, [dir]})
-      RepeatingTimeout.start_timer(:detect_power_loss, 2000, {Peer, :redistribute_hall_orders_of_node, [Node.self]})
+      RepeatingTimeout.start_timer(:maintain_movement, 3000, {Actuator, :change_direction, [dir]})
+      RepeatingTimeout.start_timer(:detect_power_loss, 8000, {Peer, :redistribute_hall_orders_of_node, [Node.self]})
     end
   end
 

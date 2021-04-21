@@ -92,6 +92,19 @@ defmodule Debug do
                 IO.write("They have failed to respond this many times: ")
                 IO.inspect(Enum.at(parameters, 1))
                 IO.inspect("Pinging peers!")
+
+            :starting_timer ->
+                IO.write("Starting timer: ")
+                IO.inspect(parameters)
+
+            :stopping_timer ->
+                IO.write("Stopping timer: ")
+                IO.inspect(parameters)
+
+            :timer_timedout ->
+                IO.write("Timer ")
+                IO.inspect(parameters)
+                IO.write("Timed out!")
         end
     end
 end
