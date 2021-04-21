@@ -1,33 +1,24 @@
 defmodule ElevatorOTP.Application do
-  # See https://hexdocs.pm/elixir/Application.html
-  # for more information on OTP Applications
   @moduledoc false
 
   use Application
 
-  def start(_type, [elev_number, driver_port, debug]) do  # Extend args?
+  def start(_type, [elev_number, driver_port, debug]) do
     children = [
       {RuntimeConstants, [elev_number, debug]},
       {Driver, [{127,0,0,1}, driver_port]},
       RepeatingTimeout,
       Queue,
-      {OrderLogger, elev_number},
+      {BackupQueue, elev_number},
       Position,
-      HWUpdateReceiver,
+      HWUpdateServer,
       HWPoller.Supervisor,
       Actuator,
       DriverFSM,
-      {Peer, elev_number},
-      Pinger  # Should be child of Peer?
-       # recall that start_link with mult. init args must be list
-      # Drivers args should be a map for security
-
-      # Starts a worker by calling: ElevatorOtp.Worker.start_link(arg)
-      # {ElevatorOtp.Worker, arg}
+      {OrderDistribution, elev_number},
+      Pinger
     ]
 
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
     opts = [strategy: :one_for_one, name: ElevatorOTP.Supervisor]
     Supervisor.start_link(children, opts)
   end

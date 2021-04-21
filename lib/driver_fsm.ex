@@ -42,7 +42,7 @@ defmodule DriverFSM do
     if new_floor_or_direction == :between_floors do
       {_floor, dir} = Position.get
       RepeatingTimeout.start_timer(:maintain_movement, 3000, {Actuator, :change_direction, [dir]})
-      RepeatingTimeout.start_timer(:detect_power_loss, 8000, {Peer, :redistribute_hall_orders_of_node, [Node.self]})
+      RepeatingTimeout.start_timer(:detect_power_loss, 8000, {OrderDistribution, :redistribute_hall_orders_of_node, [Node.self]})
     end
   end
 
@@ -161,7 +161,7 @@ defmodule DriverFSM do
       Actuator.open_door
       :ok = Queue.remove_all_orders_to_floor(floor)
       Lights.turn_off_all_at_floor(floor)
-      Peer.notify_orders_served(floor)
+      OrderDistribution.notify_orders_served(floor)
     else
       {:error, :invalid_floor_for_open_door}
     end

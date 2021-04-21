@@ -67,7 +67,7 @@ defmodule Debug do
 
             :recovering_order_logger ->
                 
-                IO.inspect("Attempting to recover OrderLogger")
+                IO.inspect("Attempting to recover BackupQueue")
 
             :accepting_order ->
                 IO.inspect("I am accepting order ")

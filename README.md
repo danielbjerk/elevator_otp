@@ -36,6 +36,8 @@ with the first elevator taking number n = 0.
 Then the project may be compiled with `iex -S mix` and ran and started by running the function `ElevatorOTP.start(n, 15657 + y, debug (true/false))`
 where `y` is equal to `n` if running all simulators on the same PC or `0` elsewise.
 
+The "main" elevator functionality is tied to starting the Supervisor in ElevatorOTP.application.
+
 
 Unspecified behaviour
 ---------------------

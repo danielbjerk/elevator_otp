@@ -1,4 +1,4 @@
-defmodule HWUpdateReceiver do
+defmodule HWUpdateServer do
   @moduledoc """
   Server for receiving button-presses and floor updates and forewarding these to the correct module. Also acts as the supervisor for all 3*n buttons.
   The state of the server is the last update it has recevied.
@@ -43,7 +43,7 @@ defmodule HWUpdateReceiver do
 
   @impl true
   def handle_cast({at_button_type, floor, 1}, _state) do
-    Task.start(Peer, :handle_order, [{floor, at_button_type, :order}])
+    Task.start(OrderDistribution, :handle_order, [{floor, at_button_type, :order}])
     {:noreply, :order_received}
   end
 
@@ -78,7 +78,7 @@ defmodule HWPoller.Supervisor do
 
     floor_sensor = [%{id: :floor_sensor_reporter, start: {HWPoller, :start_link, [:floor_sensor, :not_a_floor]}}]
 
-    hall_up_buttons ++ hall_down_buttons ++ cab_buttons ++ floor_sensor
+    hall_up_buttons ++ hall_down_buttons ++ cab_buttons ++ floor_sensor # ++ stop_button
   end
   defp create_child_spec_of_button(at_button_type) do
     Enum.map(Constants.all_floors_range,
@@ -108,7 +108,7 @@ defmodule HWPoller do
 
   def state_change_reporter(:stop_button, _floor, last_state) do
     new_state = Driver.get_stop_button_state
-    if new_state !== last_state, do: HWUpdateReceiver.notify_update({:stop_button, new_state})
+    if new_state !== last_state, do: HWUpdateServer.notify_update({:stop_button, new_state})
 
     # Recursion
     Process.sleep(Constants.hw_sensor_sleep_time_ms)
@@ -118,7 +118,7 @@ defmodule HWPoller do
 
   def state_change_reporter(:floor_sensor, _floor, last_state) do
     new_state = Driver.get_floor_sensor_state
-    if new_state !== last_state, do: HWUpdateReceiver.notify_update({:floor_sensor, new_state})
+    if new_state !== last_state, do: HWUpdateServer.notify_update({:floor_sensor, new_state})
 
     # Recursion
     Process.sleep(Constants.hw_sensor_sleep_time_ms)
@@ -129,7 +129,7 @@ defmodule HWPoller do
   # Use this for order buttons (at_button_type is either :hall_up, :hall_down or :cab)
   def state_change_reporter(at_button_type, floor, last_state) do
     new_state = Driver.get_order_button_state(floor, at_button_type)
-    if new_state !== last_state, do: HWUpdateReceiver.notify_update({at_button_type, floor, new_state})
+    if new_state !== last_state, do: HWUpdateServer.notify_update({at_button_type, floor, new_state})
 
     # Recursion
     Process.sleep(Constants.hw_sensor_sleep_time_ms)

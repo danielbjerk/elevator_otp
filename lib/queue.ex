@@ -121,7 +121,7 @@ end
 
 
 
-defmodule OrderLogger do
+defmodule BackupQueue do
   use Agent
 
   def start_link(my_elev_number) do
@@ -129,7 +129,7 @@ defmodule OrderLogger do
   end
 
   def generate_empty_logger(my_elev_number) do
-    Map.new(Peer.list_all_node_names_except([my_elev_number]), fn name -> {name, generate_empty_queue} end)
+    Map.new(OrderDistribution.list_all_node_names_except([my_elev_number]), fn name -> {name, generate_empty_queue} end)
   end
   def generate_empty_queue do
     Enum.map(Constants.all_floors_range, fn floor -> [{floor, :hall_up, :no_order}, {floor, :hall_down, :no_order}, {floor, :cab, :no_order}] end)

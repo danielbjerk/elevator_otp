@@ -1,9 +1,9 @@
-defmodule Pinger do#Bør linkes til Peer
+defmodule Pinger do
     use Task
     
     def start_link(_args) do
         empty_ping_responses = Enum.map(
-            Peer.list_all_node_names_except([RuntimeConstants.get_elev_number]), 
+            OrderDistribution.list_all_node_names_except([RuntimeConstants.get_elev_number]), 
             fn node_name -> [node_name, Constants.ping_allowed_missed_pings_num] end
             )
         Task.start_link(__MODULE__, :ping_peers, [empty_ping_responses])
@@ -24,13 +24,13 @@ defmodule Pinger do#Bør linkes til Peer
         end)
 
         if Enum.any?(List.flatten(new_ping_responses), fn ans_or_name -> ans_or_name < Constants.ping_allowed_missed_pings_num end) do
-            Peer.peers_respond
+            OrderDistribution.peers_respond
         else
-            Peer.no_peers_respond   # Network timed out
+            OrderDistribution.no_peers_respond   # Network timed out
         end
 
         Enum.each(new_ping_responses, fn [node_name, missed_pings] ->
-           if (rem(missed_pings + 1, 5) == 0), do: Peer.redistribute_hall_orders_of_node(node_name) # Peer timed out
+           if (rem(missed_pings + 1, 5) == 0), do: OrderDistribution.redistribute_hall_orders_of_node(node_name) # Peer timed out
         end)
 
         Process.sleep(Constants.ping_wait_time_ms)

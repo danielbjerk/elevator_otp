@@ -1,4 +1,4 @@
-defmodule Peer do
+defmodule OrderDistribution do
     @moduledoc """
     Module for peer-to-peer-communication between the elevators
     """
@@ -41,7 +41,7 @@ defmodule Peer do
         if RuntimeConstants.debug?, do: Debug.print_debug(:new_cab_order_ptp_elevator, {floor, :cab, :order})
 
         order = {floor, :cab, :order}
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response_ms)   #if timeout, then?
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, OrderDistribution, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response_ms)   #if timeout, then?
         if replies != [], do: accept_order(order)
         {:noreply, :ptp_elevator}
     end
@@ -52,7 +52,7 @@ defmodule Peer do
 
         if RuntimeConstants.debug?, do: Debug.print_debug(:new_order_ptp_elevator, [order, node_to_assign_order])
 
-        Node.spawn(node_to_assign_order, Peer, :take_this_order, [order])   # Would prefer this to be a call to the module, as to keep track of  the assigner
+        Node.spawn(node_to_assign_order, OrderDistribution, :take_this_order, [order])   # Would prefer this to be a call to the module, as to keep track of  the assigner
         {:noreply, :ptp_elevator}
     end
 
@@ -65,7 +65,7 @@ defmodule Peer do
     def handle_call({:take_this_order, order}, from, state) do
         if RuntimeConstants.debug?, do: Debug.print_debug(:take_this_order, [order, from])
 
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response_ms)
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, OrderDistribution, {:log_this_order, order, Node.self}, Constants.peer_wait_for_response_ms)
         if replies != [], do: accept_order(order)
         {:reply, :ok, state}
     end
@@ -74,7 +74,7 @@ defmodule Peer do
     def handle_call({:log_this_order, order, from_node}, _from, state) do
         if RuntimeConstants.debug?, do: Debug.print_debug(:log_this_order, [order, from_node])
 
-        OrderLogger.add_order(from_node, order)
+        BackupQueue.add_order(from_node, order)
         
         {floor, order_type, :order} = order
         if order_type != :cab, do: Lights.turn_on(floor, order_type)
@@ -87,7 +87,7 @@ defmodule Peer do
         IO.write("Unlogging hall_orders of :")
         IO.inspect(node_name)
 
-        OrderLogger.pop_active_hall_orders(node_name)
+        BackupQueue.pop_active_hall_orders(node_name)
         {:reply, :ok, state}
     end
 
@@ -95,7 +95,7 @@ defmodule Peer do
     def handle_call({:orders_served, floor, from_node}, _from, state) do
         if RuntimeConstants.debug?, do: Debug.print_debug(:orders_served, [floor, from_node])
 
-        OrderLogger.remove_all_orders_to_floor(from_node, floor)
+        BackupQueue.remove_all_orders_to_floor(from_node, floor)
         
         Lights.turn_off(floor, :hall_up)
         Lights.turn_off(floor, :hall_down)
@@ -115,7 +115,7 @@ defmodule Peer do
     def handle_call({:give_active_cab_calls_of_node, node_name}, _from, state) do
         if RuntimeConstants.debug?, do: Debug.print_debug(:give_active_cab_calls_of_node, node_name)
 
-        active_cab_calls = OrderLogger.get_all_active_orders_of_type(node_name, :cab)
+        active_cab_calls = BackupQueue.get_all_active_orders_of_type(node_name, :cab)
         {:reply, active_cab_calls, state}
     end
 
@@ -132,7 +132,7 @@ defmodule Peer do
     def recover_cab_calls do
         if RuntimeConstants.debug?, do: Debug.print_debug(:recovering_cab_calls, [])
 
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_cab_calls_of_node, Node.self}, Constants.peer_wait_for_response_ms)
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, OrderDistribution, {:give_active_cab_calls_of_node, Node.self}, Constants.peer_wait_for_response_ms)
         
         if (replies != []) do
             Enum.each(replies, fn {_from, cab_calls} -> 
@@ -149,7 +149,7 @@ defmodule Peer do
     def recover_order_logger do
         if RuntimeConstants.debug?, do: Debug.print_debug(:recovering_order_logger, [])
 
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:give_active_orders}, Constants.peer_wait_for_response_ms)
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, OrderDistribution, {:give_active_orders}, Constants.peer_wait_for_response_ms)
 
         if (replies != []) do
             Enum.each(replies, fn {from_node, active_orders} -> 
@@ -170,13 +170,13 @@ defmodule Peer do
 
         if node_name == Node.self do
             active_hall_orders = Queue.pop_active_hall_orders
-            GenServer.multi_call(Node.list, Peer, {:unlog_hall_orders_to, node_name}, Constants.peer_wait_for_response_ms)
+            GenServer.multi_call(Node.list, OrderDistribution, {:unlog_hall_orders_to, node_name}, Constants.peer_wait_for_response_ms)
             Enum.each(active_hall_orders, fn order -> 
                 handle_order(order)
             end)
         else
-            active_hall_orders = OrderLogger.pop_active_hall_orders(node_name)
-            GenServer.multi_call(Node.list -- [node_name], Peer, {:unlog_hall_orders_to, node_name}, Constants.peer_wait_for_response_ms)
+            active_hall_orders = BackupQueue.pop_active_hall_orders(node_name)
+            GenServer.multi_call(Node.list -- [node_name], OrderDistribution, {:unlog_hall_orders_to, node_name}, Constants.peer_wait_for_response_ms)
             Enum.each(active_hall_orders, fn order -> 
                 handle_order(order)
             end)
@@ -189,7 +189,7 @@ defmodule Peer do
     def find_node_with_lowest_cost(order) do
         # This is obtuse when calling with timeout =/= infty
         my_cost = {Node.self, Cost.calculate_cost_for_order(order)}
-        {replies, _bad_nodes} = GenServer.multi_call(Node.list, Peer, {:calculate_cost, order}, Constants.peer_wait_for_response_ms)
+        {replies, _bad_nodes} = GenServer.multi_call(Node.list, OrderDistribution, {:calculate_cost, order}, Constants.peer_wait_for_response_ms)
         all_costs = [my_cost | replies]
         |> IO.inspect
         {node_with_lowest_cost, _lowest_cost} = Enum.min_by(all_costs, fn {_node, cost} -> cost end)
@@ -210,7 +210,7 @@ defmodule Peer do
     end
 
     def notify_orders_served(floor) do
-        GenServer.multi_call(Node.list, Peer, {:orders_served, floor, Node.self}, Constants.peer_wait_for_response_ms)
+        GenServer.multi_call(Node.list, OrderDistribution, {:orders_served, floor, Node.self}, Constants.peer_wait_for_response_ms)
         :ok
     end
 
@@ -222,7 +222,6 @@ defmodule Peer do
     @impl true
     def handle_call(:peers_respond, _from, state) do
         IO.inspect("I think I am online!")
-        #OrderLogger.update_node_name_of_elevator_number(elev_num, node_name)
 
         if state == :single_elevator do
             Task.start(__MODULE__, :recover_cab_calls, [])
@@ -239,7 +238,6 @@ defmodule Peer do
     @impl true
     def handle_call(:no_peers_respond, _from, _state) do
         IO.inspect("I think I am offline!")
-        # Do something?
         {:reply, :ok, :single_elevator}
     end
 
@@ -247,7 +245,7 @@ defmodule Peer do
 
     # Helper function
 
-    def elev_number_to_node_name(elev_number) do    # Move to constants? Also used by pinger/OrderLogger
+    def elev_number_to_node_name(elev_number) do    # Move to constants? Also used by pinger/BackupQueue
         String.to_atom("elevator" <> to_string(elev_number) <> "@" <> Constants.elev_number_to_ip(elev_number)) # Her er pinging en by-effect -> BAD Uansett ekkelt kall til dette som er dupllicate av funk i Pinger
     end
 
