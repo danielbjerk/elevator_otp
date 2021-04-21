@@ -46,6 +46,14 @@ defmodule DriverFSM do
     end
   end
 
+  def notify_queue_updated(order) do
+    GenServer.cast(__MODULE__, {:new_order, order})
+  end
+
+
+  # Events when state == :queue_empty
+  
+  @impl true
   def handle_cast({:updated_floor, new_floor}, :queue_empty) do
     if (new_floor == Constants.bottom_floor) or (new_floor == Constants.top_floor), do: Actuator.change_direction(:stop)
 
@@ -55,9 +63,6 @@ defmodule DriverFSM do
     {:noreply, :queue_empty}
   end
 
-  def notify_queue_updated(order) do
-    GenServer.cast(__MODULE__, {:new_order, order})
-  end
   @impl true
   def handle_cast({:new_order, order}, :queue_empty) do
     {floor, _direction} = Position.get
@@ -82,12 +87,6 @@ defmodule DriverFSM do
         {:noreply, :driving_down}
     end
   end
-
-
-  def notify_floor_updated(new_floor) do
-    GenServer.cast(__MODULE__, {:updated_floor, new_floor})
-  end
-
 
 
   # Events when state == :driving_up
