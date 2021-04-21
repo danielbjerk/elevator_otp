@@ -5,12 +5,23 @@ defmodule Position do
   """
   use Agent
 
+
+  # Start
+
   def start_link(_opts) do
     {:ok, _agent} = Agent.start_link(fn -> {:unknown_floor, :unknown_direction} end, name: __MODULE__)
   end
 
+
+  # Getting and setting
+
   def get() do
     Agent.get(__MODULE__, & &1)
+  end  
+
+  def update(new_floor_or_direction) do
+    Agent.update(__MODULE__, __MODULE__, :calculate_update, [new_floor_or_direction])
+    FSM.notify_position_updated(new_floor_or_direction)
   end
 
   def at_a_floor?() do
@@ -18,10 +29,8 @@ defmodule Position do
     is_integer(floor)
   end
 
-  def update(new_floor_or_direction) do
-    Agent.update(__MODULE__, __MODULE__, :calculate_update, [new_floor_or_direction])
-    FSM.notify_position_updated(new_floor_or_direction)
-  end
+
+  # Helper functions
 
   def calculate_update(old_position, update) do
     {old_floor, old_direction} = old_position
@@ -43,6 +52,7 @@ defmodule Position do
         end
     end
   end
+
   def add_to_floor(:unknown_floor, _num) do
     :unknown_floor
   end 

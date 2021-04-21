@@ -1,30 +1,28 @@
 defmodule HWUpdateServer do
   @moduledoc """
-  Server for receiving button-presses and floor updates and forewarding these to the correct module. Also acts as the supervisor for all 3*n buttons.
-  The state of the server is the last update it has recevied.
+  Server for receiving button-presses and floor updates and forewarding these to the correct module.
   """
 
   use GenServer
 
 
-  # Client-side
+  # Start
 
   def start_link(_opts) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
-
-
-  # Server-side
 
   @impl true
   def init(_init_arg) do
     {:ok, :receiving}
   end
 
+
+  # Wrapper/Interface
+
   def notify_update(sensor_change) do
     GenServer.cast(__MODULE__, sensor_change)
   end
-
 
 
   # Callbacks
@@ -65,13 +63,14 @@ defmodule HWPoller.Supervisor do
 
   @impl true
   def init(_init_arg) do
-    children = list_children()
+    children = list_child_spec_of_all_buttons
     
     Supervisor.init(children, strategy: :one_for_one)
   end
 
-  defp list_children() do
-    # Make list with elements %{id: String.to_atom(sensor_type <> "_floor_" <> floor), start: {HWPoller, :start_link, [at_sensor_type, floor/:not_a_floor]}}
+
+
+  defp list_child_spec_of_all_buttons do
     hall_up_buttons = create_child_spec_of_button(:hall_up)
     hall_down_buttons = create_child_spec_of_button(:hall_down)
     cab_buttons = create_child_spec_of_button(:cab)
@@ -80,10 +79,13 @@ defmodule HWPoller.Supervisor do
 
     hall_up_buttons ++ hall_down_buttons ++ cab_buttons ++ floor_sensor # ++ stop_button
   end
+
   defp create_child_spec_of_button(at_button_type) do
     Enum.map(Constants.all_floors_range,
     fn floor -> %{
-      id: String.to_atom(Atom.to_string(at_button_type) <> "_floor_" <> Integer.to_string(floor)),
+      id: String.to_atom(
+        Atom.to_string(at_button_type) <> "_floor_" <> Integer.to_string(floor)
+        ),
       start: {HWPoller, :start_link, [at_button_type, floor]}
       }
     end)
@@ -94,13 +96,12 @@ end
 
 defmodule HWPoller do
   @moduledoc """
-  Module for implementing "interrupts" from the elevator into elixir in the form of standardized messages
+  Module for converting generalized polling of hardware to specific interrupts.
   """
 
   use Task
 
   def start_link(at_sensor_type, floor) do
-    #IO.puts("I just started " <> Atom.to_string(at_sensor_type) <>  " at floor " <> Integer.to_string(floor))
     Task.start_link(__MODULE__, :state_change_reporter, [at_sensor_type, floor, :init])
   end
 
@@ -110,7 +111,6 @@ defmodule HWPoller do
     new_state = Driver.get_stop_button_state
     if new_state !== last_state, do: HWUpdateServer.notify_update({:stop_button, new_state})
 
-    # Recursion
     Process.sleep(Constants.hw_sensor_sleep_time_ms)
     state_change_reporter(:stop_button, :not_a_floor, new_state)
   end
@@ -120,7 +120,6 @@ defmodule HWPoller do
     new_state = Driver.get_floor_sensor_state
     if new_state !== last_state, do: HWUpdateServer.notify_update({:floor_sensor, new_state})
 
-    # Recursion
     Process.sleep(Constants.hw_sensor_sleep_time_ms)
     state_change_reporter(:floor_sensor, :not_a_floor, new_state)
   end
@@ -131,7 +130,6 @@ defmodule HWPoller do
     new_state = Driver.get_order_button_state(floor, at_button_type)
     if new_state !== last_state, do: HWUpdateServer.notify_update({at_button_type, floor, new_state})
 
-    # Recursion
     Process.sleep(Constants.hw_sensor_sleep_time_ms)
     state_change_reporter(at_button_type, floor, new_state)
   end

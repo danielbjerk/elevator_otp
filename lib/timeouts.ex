@@ -1,6 +1,11 @@
 defmodule Pinger do
+    @moduledoc """
+    Module for continously checking if expected peers respond, and updating distribution of orders based on this.
+    """
+
     use Task
     
+
     def start_link(_args) do
         empty_ping_responses = Enum.map(
             Constants.peer_list_all_my_peers, 
@@ -8,8 +13,6 @@ defmodule Pinger do
             )
         Task.start_link(__MODULE__, :ping_peers, [empty_ping_responses])
     end
-
-
 
     def ping_peers(ping_responses) do
         if RuntimeConstants.debug?, do: Debug.print_debug(:ping_peers_now, [Node.list, ping_responses])

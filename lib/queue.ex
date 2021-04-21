@@ -1,11 +1,10 @@
-defmodule Queue do  # TODO: Gå gjennom og fjern alle unødvendige funksjone
+defmodule Queue do
   @moduledoc """
   Agent which stores and deals with accessing the queue.
   Orders are tuples on the form {int floor, atom order_type, atom order/no_order}
   """
 
   use Agent
-
 
 
   # Starting the queue

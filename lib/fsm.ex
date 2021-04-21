@@ -5,6 +5,7 @@ defmodule FSM do
 
   use GenServer
 
+  
   # Initialization of FSM
 
   def start_link(_opts) do
@@ -28,7 +29,7 @@ defmodule FSM do
 
   def notify_position_updated(new_floor_or_direction) do
     if is_integer(new_floor_or_direction) do
-      # Common actions for all states
+      # Actions regardless of state
 
       if (new_floor_or_direction == Constants.bottom_floor) or (new_floor_or_direction == Constants.top_floor), do: Actuator.change_direction(:stop)
       Lights.change_floor_indicator(new_floor_or_direction)
@@ -133,13 +134,13 @@ defmodule FSM do
 
 
 
-  # Events which aren't to be acted on
+  # Safe fall-backs on unexpected events
 
   @impl true
-  def handle_cast({:new_order, {order_floor, _order_type, :order}}, driving_dir) do
+  def handle_cast({:new_order, {order_floor, _order_type, :order}}, any_state) do
     {floor, dir} = Position.get
     if order_floor == floor && dir == :stop, do: serve_all_orders_to_floor(order_floor)
-    {:noreply, driving_dir}
+    {:noreply, any_state}
   end
 
 

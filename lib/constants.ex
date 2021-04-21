@@ -31,6 +31,7 @@ defmodule Constants do
   def peer_list_all_my_peers do
     peer_list_all_node_names_except([RuntimeConstants.get_elev_number])
   end
+
   # Call with list_of_elev_numbers_exceptions = [] to list all node names
   def peer_list_all_node_names_except(list_of_elev_numbers_exceptions) do
     all_other_nodes_numbers = Enum.to_list(Constants.all_elevators_range) -- list_of_elev_numbers_exceptions
@@ -43,6 +44,7 @@ defmodule Constants do
 
   def ping_allowed_missed_pings_num, do: 3
   
+
   # Hardware
 
   def door_wait_for_obstruction_time_ms, do: 5000
@@ -55,7 +57,7 @@ end
 
 defmodule RuntimeConstants do
   @moduledoc """
-  Module for variables defined at runtime but which are to be constant after this.
+  Module for variables defined at runtime but which are to be constant after this point.
   """
 
   use Agent

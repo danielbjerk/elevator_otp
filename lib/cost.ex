@@ -1,4 +1,43 @@
 defmodule Cost do
+    @moduledoc """
+    Module for calculating cost of an order. Lower = better.
+    """
+
+    def calculate_cost_for_order(order) do
+
+        try do
+
+            pTask = Task.async(fn -> Position.get() end)
+            position = Task.await(pTask, 100)
+
+            qTask = Task.async(fn -> Queue.get() end)
+            q = Task.await(qTask, 100)
+
+            tTask = Task.async(fn -> RepeatingTimeout.get_time(:detect_power_loss) end)
+            time_power_lost_ms = Task.await(tTask, 100)
+
+            add_distance_cost(0, position, order)
+            |> add_queue_length_cost(q)
+            |> add_compatibility_cost(order)
+            |> add_direction_cost(order, position)
+            |> add_power_loss_cost(time_power_lost_ms)
+
+        rescue
+
+            :timeout -> :infinite_cost
+
+            e ->
+                IO.puts("Something went wrong. Error:")
+                IO.inspect(e)
+                IO.puts("End-error")
+                :error
+
+        end
+
+    end
+
+
+    # Cost modifiers
 
     def add_distance_cost(cost, position, order) do # Add cost due to distance between current position and order position.
         {elevator_floor, _elevator_direction} = position
@@ -35,39 +74,7 @@ defmodule Cost do
     end
 
 
-    def calculate_cost_for_order(order) do
-
-        try do
-
-            pTask = Task.async(fn -> Position.get() end)
-            position = Task.await(pTask, 100)
-
-            qTask = Task.async(fn -> Queue.get() end)
-            q = Task.await(qTask, 100)
-
-            tTask = Task.async(fn -> RepeatingTimeout.get_time(:detect_power_loss) end)
-            time_power_lost_ms = Task.await(tTask, 100)
-
-            add_distance_cost(0, position, order)
-            |> add_queue_length_cost(q)
-            |> add_compatibility_cost(order)
-            |> add_direction_cost(order, position)
-            |> add_power_loss_cost(time_power_lost_ms)
-
-        rescue
-
-            :timeout -> :infinite_cost    # Failed to retrieve position for elevator.
-
-            e ->
-                IO.puts("Something went wrong. Error:")
-                IO.inspect(e)
-                IO.puts("End-error")
-                :error
-                
-
-        end
-
-    end
+    # Helper function
 
     def order_direction_to_signed_int(dir) do
         case dir do

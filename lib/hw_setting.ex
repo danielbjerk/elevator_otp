@@ -1,17 +1,16 @@
 defmodule Actuator do
   @moduledoc """
-  Server for controlling door and motor.
+  Server for controlling door and motor, especially ensuring the door is never open when the motor is commanded to move.
   """
 
   use GenServer
 
-  # Client-side
+  
+  # Starting
 
   def start_link(_opts) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
-
-  # Server-side
 
   @impl true
   def init(_init_args) do
@@ -19,21 +18,27 @@ defmodule Actuator do
     {:ok, :door_closed}
   end
 
-  # Callbacks
+
+  # Wrappers/Interface
 
   def change_direction(new_direction) do
     GenServer.cast(__MODULE__, {:change_direction, new_direction})
     Position.update(new_direction)
   end
+
+  def open_door do
+    GenServer.cast(__MODULE__, {:open_door})
+  end
+
+
+  # Callbacks
+
   @impl true
   def handle_cast({:change_direction, direction}, _driver_state) do
     Motor.change_direction(direction)
     {:noreply, :driving}
   end
 
-  def open_door do
-    GenServer.cast(__MODULE__, {:open_door})
-  end
   @impl true
   def handle_cast({:open_door}, _driver_state) do
     Door.door_open_wait_until_closing
@@ -46,7 +51,6 @@ end
 defmodule Door do
   @moduledoc """
   Opens door, and closes it after door_wait_for_obstruction_time_ms as long as obstruction isn't active.
-  Call Door.door_open_wait_until_closing() to do this, man.
   """
 
   def door_open_wait_until_closing() do
@@ -57,6 +61,8 @@ defmodule Door do
 
     door_close()
   end
+
+
 
   defp door_open() do
     # Should be calls to light, but door is implemented as just a light
@@ -91,6 +97,8 @@ end
 
 
 defmodule Lights do
+  # Small wrapper around Driver.
+  
   def turn_on(floor, order_type) do
     Driver.set_order_button_light(order_type, floor, :on)
   end
