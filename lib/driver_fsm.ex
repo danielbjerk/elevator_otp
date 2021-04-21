@@ -32,10 +32,18 @@ defmodule DriverFSM do
 
       if (new_floor_or_direction == Constants.bottom_floor) or (new_floor_or_direction == Constants.top_floor), do: Actuator.change_direction(:stop)
       Lights.change_floor_indicator(new_floor_or_direction)
+
+      RepeatingTimeout.stop_timer(:maintain_movement)
+      RepeatingTimeout.stop_timer(:detect_power_loss)
+
       GenServer.cast(__MODULE__, {:updated_floor, new_floor_or_direction})
     end
 
-  # Events when state == :queue_empty
+    if new_floor_or_direction == :between_floors do
+      {_floor, dir} = Position.get
+      RepeatingTimeout.start_timer(:maintain_movement, 3000, {Actuator, :change_direction, [dir]})
+      RepeatingTimeout.start_timer(:detect_power_loss, 8000, {Peer, :redistribute_hall_orders_of_node, [Node.self]})
+    end
   end
 
   def notify_queue_updated(order) do
@@ -44,7 +52,8 @@ defmodule DriverFSM do
 
 
   # Events when state == :queue_empty
-
+  
+  @impl true
   def handle_cast({:updated_floor, _new_floor}, :queue_empty) do
     Actuator.change_direction(:stop)
     {:noreply, :queue_empty}
@@ -74,7 +83,6 @@ defmodule DriverFSM do
         {:noreply, :driving_down}
     end
   end
-
 
 
   # Events when state == :driving_up

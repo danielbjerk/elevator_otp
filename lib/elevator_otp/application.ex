@@ -9,6 +9,7 @@ defmodule ElevatorOTP.Application do
     children = [
       {RuntimeConstants, elev_number},
       {Driver, [{127,0,0,1}, Constants.elev_number_to_driver_port(elev_number)]},
+      RepeatingTimeout,
       Queue,
       {OrderLogger, elev_number},
       Position,
