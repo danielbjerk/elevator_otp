@@ -5,10 +5,10 @@ defmodule ElevatorOTP.Application do
 
   use Application
 
-  def start(_type, [elev_number, _arg2]) do  # Extend args?
+  def start(_type, [elev_number, driver_port, debug]) do  # Extend args?
     children = [
-      {RuntimeConstants, elev_number},
-      {Driver, [{127,0,0,1}, Constants.elev_number_to_driver_port(elev_number)]},
+      {RuntimeConstants, [elev_number, debug]},
+      {Driver, [{127,0,0,1}, driver_port]},
       RepeatingTimeout,
       Queue,
       {OrderLogger, elev_number},

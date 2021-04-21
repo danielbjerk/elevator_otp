@@ -17,14 +17,11 @@ defmodule Constants do
 
   def elev_number_to_ip(elev_number) do
     case elev_number do
+      # Modify these numbers to reflect static IP of elevators
       0 -> "10.24.37.6"
       1 -> "10.24.37.6"
       2 -> "10.24.37.6"
     end
-  end
-
-  def elev_number_to_driver_port(elev_number) do
-    15657 + elev_number
   end
 
   def peer_wait_for_response_ms, do: 500
@@ -50,7 +47,7 @@ defmodule RuntimeConstants do
 
   use Agent
 
-  def start_link(elev_number, debug \\ true) do
+  def start_link([elev_number, debug]) do
     Agent.start_link(fn -> {elev_number, debug} end, name: __MODULE__)
   end
 
