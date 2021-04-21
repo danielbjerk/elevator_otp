@@ -44,7 +44,7 @@ The elevator will take any order in ptp-mode as long as it is able to confirm th
 Assumptions
 ---------------------
 
-The only assumption made in this implementation (beyond the base assumptions given) is the use of static IP for each elevator's computer. We feel this is a natural assumption, but concede that broadcasting each elevator's IP over UDP should be possible to implement even though we were unable to do so.
+The only assumption made in this implementation (beyond the base assumptions given) is the use of static IP for each elevator's computer.
 
    
 Additional resources
